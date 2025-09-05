@@ -1,0 +1,52 @@
+formulas:
+  Time: OOEvent_LocalTimestamp
+  File: link(OOEvent_Filename)
+  Untitled: OOEvent_LocalTimestamp - now()
+  When: (now() - date(OOEvent_LocalTimestamp.slice(0,10))).days
+  FileLink: file(OOEvent_FilePath)
+  Accessed: date(OOEvent_LocalTimestamp.slice(0,19)).relative()
+properties:
+  note.OOEvent_Type:
+    displayName: Event
+  note.OOEvent_LocalTimestamp:
+    displayName: Timestamp
+  file.name:
+    displayName: Note
+  note.OOEvent_Hostname:
+    displayName: Hostname
+views:
+  - type: table
+    name: Table
+    filters:
+      and:
+        - file.hasProperty("OOEvent_GUID")
+    order:
+      - OOEvent_Type
+      - formula.File
+      - OOEvent_LocalTimestamp
+      - OOEvent_Timestamp
+    sort: []
+    columnSize:
+      formula.File: 150
+  - type: table
+    name: Today's File Accesses
+    filters:
+      and:
+        - formula.When <= 1
+        - OOEvent_Type.containsAny("open", "save", "rename", "delete")
+    order:
+      - formula.FileLink
+      - OOEvent_Type
+      - formula.Accessed
+      - OOEvent_Hostname
+    sort:
+      - property: formula.Accessed
+        direction: DESC
+      - property: OOEvent_LocalTimestamp
+        direction: ASC
+      - property: formula.When
+        direction: ASC
+    columnSize:
+      formula.FileLink: 140
+      note.OOEvent_Type: 117
+      note.OOEvent_LocalTimestamp: 213

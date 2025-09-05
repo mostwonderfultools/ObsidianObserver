@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hostname Detection Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .error { background: #ffe6e6; color: #cc0000; }
+        .success { background: #e6ffe6; color: #006600; }
+    </style>
+</head>
+<body>
+    <h1>Hostname Detection Test</h1>
+    <p>This page tests various methods of detecting hostname information in a browser environment.</p>
+    
+    <div id="results"></div>
+    
+    <script>
+        function addResult(title, content, isError = false) {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `result ${isError ? 'error' : 'success'}`;
+            resultDiv.innerHTML = `<h3>${title}</h3><pre>${JSON.stringify(content, null, 2)}</pre>`;
+            resultsDiv.appendChild(resultDiv);
+        }
+        
+        function testHostnameDetection() {
+            addResult('Navigator Platform', navigator.platform);
+            addResult('Navigator User Agent', navigator.userAgent);
+            addResult('Navigator Language', navigator.language);
+            addResult('Navigator Languages', navigator.languages);
+            
+            // Test if process is available (like in Electron)
+            if (typeof process !== 'undefined') {
+                addResult('Process Available', 'Yes');
+                if (process.env) {
+                    addResult('Environment Variables', {
+                        HOSTNAME: process.env.HOSTNAME,
+                        COMPUTERNAME: process.env.COMPUTERNAME,
+                        USERDOMAIN: process.env.USERDOMAIN,
+                        USER: process.env.USER,
+                        HOME: process.env.HOME,
+                        PWD: process.env.PWD
+                    });
+                }
+            } else {
+                addResult('Process Available', 'No');
+            }
+            
+            // Test if require is available
+            if (typeof require !== 'undefined') {
+                addResult('Require Available', 'Yes');
+                try {
+                    const os = require('os');
+                    addResult('OS Module', {
+                        hostname: os.hostname(),
+                        platform: os.platform(),
+                        arch: os.arch(),
+                        type: os.type(),
+                        release: os.release()
+                    });
+                } catch (error) {
+                    addResult('OS Module Error', error.message, true);
+                }
+            } else {
+                addResult('Require Available', 'No');
+            }
+            
+            // Test window properties
+            addResult('Window Properties', {
+                location: window.location.href,
+                origin: window.origin,
+                innerWidth: window.innerWidth,
+                innerHeight: window.innerHeight
+            });
+        }
+        
+        // Run the test when page loads
+        window.addEventListener('load', testHostnameDetection);
+    </script>
+</body>
+</html>
