@@ -59,10 +59,12 @@ try {
 
 # Get latest git commit message
 try {
-    $CommitMessage = git log -1 --pretty=format:"%s%n%n%b" 2>$null
+    $CommitMessageRaw = git log -1 --pretty=format:"%s%n%n%b" 2>$null
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to get commit message"
     }
+    # Ensure commit message is a single string, not an array
+    $CommitMessage = $CommitMessageRaw -join "`n"
     Write-Host "📝 Latest commit message retrieved" -ForegroundColor Cyan
     if ($Verbose) {
         Write-Host "Commit message preview:" -ForegroundColor Yellow
@@ -119,7 +121,15 @@ try {
 
 if ($DryRun) {
     Write-Host "🔍 DRY RUN - Would execute the following command:" -ForegroundColor Yellow
-    Write-Host "gh release create `"$TagName`" `"$ManifestFile`" `"$MainJsFile`" --title `"$ReleaseName`" --notes `"$CommitMessage`"" -ForegroundColor Gray
+    $DryRunArgs = @(
+        "release", "create",
+        $TagName,
+        $ManifestFile,
+        $MainJsFile,
+        "--title", $ReleaseName,
+        "--notes", $CommitMessage
+    )
+    Write-Host "gh $($DryRunArgs -join ' ')" -ForegroundColor Gray
     Write-Host "📝 Release notes would be:" -ForegroundColor Yellow
     Write-Host $CommitMessage -ForegroundColor Gray
     exit 0
@@ -128,13 +138,21 @@ if ($DryRun) {
 # Create the release
 Write-Host "🚀 Creating GitHub release..." -ForegroundColor Green
 try {
-    $ReleaseCommand = "gh release create `"$TagName`" `"$ManifestFile`" `"$MainJsFile`" --title `"$ReleaseName`" --notes `"$CommitMessage`""
+    # Use PowerShell's native argument passing to avoid string escaping issues
+    $Arguments = @(
+        "release", "create",
+        $TagName,
+        $ManifestFile,
+        $MainJsFile,
+        "--title", $ReleaseName,
+        "--notes", $CommitMessage
+    )
     
     if ($Verbose) {
-        Write-Host "Executing: $ReleaseCommand" -ForegroundColor Gray
+        Write-Host "Executing: gh $($Arguments -join ' ')" -ForegroundColor Gray
     }
     
-    Invoke-Expression $ReleaseCommand
+    & gh $Arguments
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host "✅ Release created successfully!" -ForegroundColor Green
