@@ -219,3 +219,16 @@
 
   - [I] BUG: The configuration flag to toggle Console Logging doesn't work - it always generates console logs. Fix it.
   **COMPLETED**: 20250101-235000
+
+  # v00.00.09
+
+  - [I] Remove sidebar icons.
+  **COMPLETED**: 20250101-240000
+  - [I] If the table CSS is not enabled, warn the user with a message in the settings.
+  **COMPLETED**: 20250101-240000
+  - [I] Build plugin with version 00.00.09_0083
+  **COMPLETED**: 20250101-240500
+  - [I] Fix settings display issue preventing events folder setting from appearing
+  **COMPLETED**: 20250101-241000
+  - [I] Build plugin with version 00.00.09_0086
+  **COMPLETED**: 20250101-241000

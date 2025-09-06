@@ -11,9 +11,5 @@
 1. Request for permission to execute.
 1. On affirmative, execute the task and update the corresponding tasks in the task file.
 1. Maintain the README.md to ensure it is always up to date.
-1. Maintain a `prompts/complete-branch--<branchname>.ps1` file for each branch that will:
-    - Import common functions from `prompts/complete-branch-common.ps1`
-    - Define the branch-specific commit message
-    - Call the shared `Complete-Branch` function with the correct branch name
-    - Each branch maintains its own complete-branch script with only that branch's changes
 1. Use `vaults/DevVault` for all testing unless specifically asked to use a different vault.
+1. Run bin/build.ps1 to rebuild the plugin

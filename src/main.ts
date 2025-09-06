@@ -61,13 +61,6 @@ export default class ObsidianObserverPlugin extends Plugin {
       // Add settings tab
       this.addSettingTab(new ObsidianObserverSettingTab(this.app, this));
 
-      // Add ribbon icon for manual testing
-      this.addRibbonIcon('bug', 'Test ObsidianObserver Logging', async () => {
-        await this.eventHandlers.testLogging();
-        // Refresh the file explorer to show any new files
-        this.app.workspace.trigger('file-explorer:refresh');
-        new Notice('Test event note created!');
-      });
 
       // Add command palette command for manual buffer flush
       this.addCommand({
@@ -104,13 +97,6 @@ export default class ObsidianObserverPlugin extends Plugin {
         }
       });
 
-      // Add ribbon icon for creating summary note
-      this.addRibbonIcon('file-text', 'Create Events Summary', async () => {
-        await this.logger.createSummaryNote();
-        // Refresh the file explorer to show any new files
-        this.app.workspace.trigger('file-explorer:refresh');
-        new Notice('Events summary created!');
-      });
 
       // Log PluginLoaded event after successful initialization
       const { generateBase32Guid } = await import('./utils');
@@ -149,6 +135,18 @@ export default class ObsidianObserverPlugin extends Plugin {
     
     // Update logger configuration with new settings
     await this.updateLoggerConfiguration();
+  }
+
+  // Check if the CSS snippet file exists
+  async isCSSEnabled(): Promise<boolean> {
+    try {
+      const cssPath = `.obsidian/snippets/obsidianObserverEventsTable.css`;
+      const cssFile = this.app.vault.getAbstractFileByPath(cssPath);
+      return cssFile !== null;
+    } catch (error) {
+      this.log('[ObsidianObserver] Error checking CSS file:', error);
+      return false;
+    }
   }
 
   private async updateLoggerConfiguration() {
@@ -381,6 +379,9 @@ class ObsidianObserverSettingTab extends PluginSettingTab {
         .setValue(this.plugin.manifest.version)
         .setDisabled(true));
 
+    // CSS Warning (async check)
+    this.checkAndDisplayCSSWarning(containerEl);
+
     // Events Folder Setting
     new Setting(containerEl)
       .setName('Events Folder')
@@ -414,5 +415,26 @@ class ObsidianObserverSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
           this.display(); // Refresh the settings display
         }));
+  }
+
+  private async checkAndDisplayCSSWarning(containerEl: HTMLElement): Promise<void> {
+    try {
+      const cssEnabled = await this.plugin.isCSSEnabled();
+      if (!cssEnabled) {
+        const warningEl = containerEl.createDiv('setting-item');
+        const infoEl = warningEl.createDiv('setting-item-info');
+        infoEl.createDiv('setting-item-name').setText('⚠️ CSS Styling Warning');
+        warningEl.createDiv('setting-item-description').setText(
+          'The table CSS file (obsidianObserverEventsTable.css) is not found in .obsidian/snippets/. Event tables may not display properly. Please ensure the CSS snippet is enabled in Appearance settings.'
+        );
+        warningEl.style.color = 'var(--text-warning)';
+        warningEl.style.border = '1px solid var(--text-warning)';
+        warningEl.style.padding = '10px';
+        warningEl.style.borderRadius = '4px';
+        warningEl.style.marginBottom = '10px';
+      }
+    } catch (error) {
+      console.error('[ObsidianObserver] Error checking CSS:', error);
+    }
   }
 }
