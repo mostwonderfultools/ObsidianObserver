@@ -9,6 +9,7 @@
 1. Identify all the tasks marked 'R' 
 1. Determine how best to implement the tasks and report a set of actions to the user.
 1. Request for permission to execute.
+1. Append or update a git commit message at the end of each section in the TASKS.md file.
 1. On affirmative, execute the task and update the corresponding tasks in the task file.
 1. Maintain the README.md to ensure it is always up to date.
 1. Use `vaults/DevVault` for all testing unless specifically asked to use a different vault.

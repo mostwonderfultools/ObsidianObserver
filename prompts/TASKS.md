@@ -232,3 +232,23 @@
   **COMPLETED**: 20250101-241000
   - [I] Build plugin with version 00.00.09_0086
   **COMPLETED**: 20250101-241000
+
+  **Git Commit Message:**
+  ```
+  v00.00.09: Remove sidebar icons and add CSS warning
+
+  - Removed both ribbon icons (bug testing and file-text summary creation)
+  - Added CSS warning in settings when obsidianObserverEventsTable.css is not found
+  - Added isCSSEnabled() method to check for CSS snippet file existence
+  - Fixed settings display issue that was preventing events folder setting from appearing
+  - Changed display() method from async to synchronous to fix Obsidian compatibility
+  - Updated TASKS.md to mark v00.00.09 tasks as completed
+  - Built plugin with version 00.00.09_0086
+  ```
+
+   1. [I] create `bin/create-release.ps1` that will use `gh` to create a release:
+     - name the release after the branch.
+     - use the current version from the manifest as the name for the release.
+     - for `--notes` - use the latest git commit message.
+     - add `manifest.json` and `main.js`
+     **COMPLETED**: 20250101-241500
