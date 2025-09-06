@@ -524,6 +524,161 @@ views:
     }
   }
 
+  // Create the CSS file in the .obsidian/snippets folder
+  async createCSSFile(): Promise<void> {
+    try {
+      const cssPath = `.obsidian/snippets/obsidianObserverEventsTable.css`;
+      
+      const cssContent = `/* === Compact, styled Dataview tables for Obsidian Observer Events === */
+
+.obsidianObserverEventsTable
+{
+  version: "${this.getPluginVersion()}"
+}
+
+/* Scope: only tables inside .obsidianObserverEventsTable blocks */
+.obsidianObserverEventsTable table.dataview,
+.obsidianObserverEventsTable .table-view-table,
+.markdown-source-view.mod-cm6 .obsidianObserverEventsTable .table-view-table {
+  table-layout: fixed !important;
+  width: 90% !important;
+  border-collapse: collapse !important;
+
+  font-size: 8pt !important; 
+  line-height: 1.2 !important;
+
+  /* cleaned up: remove x-border; fix color var */
+  border: 5px solid rgb(157, 241, 149) !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+}
+
+/* Headers */
+.obsidianObserverEventsTable table.dataview thead th,
+.obsidianObserverEventsTable .table-view-table thead th {
+  background-color: var(--background-modifier-hover) !important;
+  color: var(--text-normal) !important;
+  font-weight: 600 !important;
+  padding: 2px 6px !important;
+  text-align: left !important;
+
+  /* keep your debug border, remove x-border */
+  border-bottom: 2px solid orange !important;
+
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+
+  /* critical: allow shrink */
+  min-width: 0 !important;
+}
+
+/* Cells */
+.obsidianObserverEventsTable table.dataview tbody td,
+.obsidianObserverEventsTable .table-view-table tbody td {
+  padding: 2px 6px !important;
+
+  /* keep your debug border, remove x-border */
+  border-bottom: 1px solid greenyellow !important;
+
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+
+  /* critical: allow shrink */
+  min-width: 0 !important;
+}
+
+/* Make cell contents shrinkable & ellipsize (anchors/spans often block) */
+.obsidianObserverEventsTable table.dataview th > *,
+.obsidianObserverEventsTable table.dataview td > *,
+.obsidianObserverEventsTable .table-view-table th > *,
+.obsidianObserverEventsTable .table-view-table td > * {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  display: inline-block !important;  /* enables overflow/ellipsis reliably */
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  vertical-align: bottom;
+}
+
+/* Column sizing — compact by default (kept your widths & debug colors) */
+.obsidianObserverEventsTable table.dataview th,
+.obsidianObserverEventsTable table.dataview td,
+.obsidianObserverEventsTable .table-view-table th,
+.obsidianObserverEventsTable .table-view-table td {
+  width: 50px !important;
+  max-width: 50px !important;
+  min-width: 0 !important;
+  background-color: darkslategray !important;
+}
+
+/* First column (File) wider */
+.obsidianObserverEventsTable table.dataview th:first-child,
+.obsidianObserverEventsTable table.dataview td:first-child,
+.obsidianObserverEventsTable .table-view-table th:first-child,
+.obsidianObserverEventsTable .table-view-table td:first-child {
+  width: 20px !important;
+  max-width: 20px !important;
+  x-background-color: red !important;
+  font-weight: bold !important;
+}
+
+/* Second column (Type) — centered + bold */
+.obsidianObserverEventsTable table.dataview th:nth-child(2),
+.obsidianObserverEventsTable table.dataview td:nth-child(2),
+.obsidianObserverEventsTable .table-view-table th:nth-child(2),
+.obsidianObserverEventsTable .table-view-table td:nth-child(2) {
+  width: 10px !important;
+  max-width: 10px !important;
+  text-align: center !important;
+  font-weight: bold !important;
+  x-background-color: lightgreen !important;
+}
+
+/* Third column (Timestamp) — monospace */
+.obsidianObserverEventsTable table.dataview th:nth-child(3),
+.obsidianObserverEventsTable table.dataview td:nth-child(3),
+.obsidianObserverEventsTable .table-view-table th:nth-child(3),
+.obsidianObserverEventsTable .table-view-table td:nth-child(3) {
+  width: 20px !important;
+  max-width: 20px !important;
+  font-family: monospace !important;
+  x-background-color: purple !important;
+}
+
+/* Zebra striping
+.obsidianObserverEventsTable table.dataview tbody tr:nth-child(even) td {
+  background-color: #f5f5f5 !important;
+}
+.obsidianObserverEventsTable table.dataview tbody tr:hover td {
+  background-color: #e0e0e0 !important;
+}
+.theme-dark .obsidianObserverEventsTable table.dataview tbody tr:nth-child(even) td {
+  background-color: #2a2a2a !important;
+}
+.theme-dark .obsidianObserverEventsTable table.dataview tbody tr:hover td {
+  background-color: #3a3a3a !important;
+}
+*/`;
+
+      // Check if CSS file already exists
+      const existingFile = this.app.vault.getAbstractFileByPath(cssPath);
+      
+      if (existingFile) {
+        console.log(`[ObsidianObserver] CSS file already exists: ${cssPath}`);
+        return;
+      }
+
+      // Create the CSS file
+      await this.app.vault.create(cssPath, cssContent);
+      console.log(`[ObsidianObserver] Created CSS file: ${cssPath}`);
+      
+    } catch (error) {
+      console.error(`[ObsidianObserver] Error creating CSS file:`, error);
+    }
+  }
+
   // Create the main summary file in the events folder
   async createMainSummaryNote(): Promise<void> {
     try {
@@ -884,6 +1039,9 @@ WHERE OOEvent_GUID = "YOUR_GUID_HERE"
       // Also create the EventsBase.base file
       await this.createEventsBaseFile();
       
+      // Also create the CSS file
+      await this.createCSSFile();
+      
       // Refresh the file explorer to show the new files
       this.app.workspace.trigger('file-explorer:refresh');
       
@@ -897,6 +1055,7 @@ WHERE OOEvent_GUID = "YOUR_GUID_HERE"
     try {
       const summaryPath = `${this.config.eventsFolder}/EventsSummary.md`;
       const basePath = `${this.config.eventsFolder}/EventsBase.base`;
+      const cssPath = `.obsidian/snippets/obsidianObserverEventsTable.css`;
       
       // Check if summary file exists and delete it
       const existingSummaryFile = this.app.vault.getAbstractFileByPath(summaryPath);
@@ -910,6 +1069,13 @@ WHERE OOEvent_GUID = "YOUR_GUID_HERE"
       if (existingBaseFile) {
         await this.app.vault.delete(existingBaseFile);
         console.log(`[ObsidianObserver] Deleted existing EventsBase.base file: ${basePath}`);
+      }
+
+      // Check if CSS file exists and delete it
+      const existingCSSFile = this.app.vault.getAbstractFileByPath(cssPath);
+      if (existingCSSFile) {
+        await this.app.vault.delete(existingCSSFile);
+        console.log(`[ObsidianObserver] Deleted existing CSS file: ${cssPath}`);
       }
 
       // Create new files with fresh content

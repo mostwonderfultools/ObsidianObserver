@@ -211,5 +211,8 @@
     **COMPLETED**: 20250101-222000
   - [I] Update logger.ts to create `EventsBase.base` whenever `EventsSummary.md` is created.
     **COMPLETED**: 20250101-222500
-  - [R] Move the contents of the files out of source:
-      - Update `logger.ts` to replace the the fileContents of both `EventSummary.md` and `EventsBase.base` with a substitution_string.
+
+  # v00.00.08
+
+  - [I] Update the system to also create `.obsidian/snippets/obsidianObserverEventsTable.css` when creating the other files.
+  **COMPLETED**: 20250101-230000
