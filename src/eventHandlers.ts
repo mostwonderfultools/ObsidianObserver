@@ -18,9 +18,15 @@ export class EventHandlers {
     this.loggerConfig = logger.getConfig(); // We'll need to add this method to EventLogger
   }
 
+  private log(message: string, ...args: any[]): void {
+    if (this.loggerConfig.enableConsoleLog) {
+      console.log(message, ...args);
+    }
+  }
+
   updateLoggerConfig(newConfig: LoggerConfig) {
     this.loggerConfig = newConfig;
-    console.log('[ObsidianObserver] Event handlers configuration updated:', newConfig);
+    this.log('[ObsidianObserver] Event handlers configuration updated:', newConfig);
   }
 
   private getHostname(): string {
@@ -32,7 +38,7 @@ export class EventHandlers {
           const os = require('os');
           if (os && typeof os.hostname === 'function') {
             const hostname = os.hostname();
-            console.log('[ObsidianObserver] os.hostname() result:', hostname);
+            this.log('[ObsidianObserver] os.hostname() result:', hostname);
             
             // Check if we got a meaningful hostname (not localhost or empty)
             if (hostname && 
@@ -44,7 +50,7 @@ export class EventHandlers {
             }
           }
         } catch (osError) {
-          console.log('[ObsidianObserver] os module not available or error:', osError);
+          this.log('[ObsidianObserver] os module not available or error:', osError);
         }
       }
       
@@ -86,7 +92,7 @@ export class EventHandlers {
             }
           }
         } catch (vaultError) {
-          console.log('[ObsidianObserver] Could not get vault name:', vaultError);
+          this.log('[ObsidianObserver] Could not get vault name:', vaultError);
         }
       }
       
@@ -108,7 +114,7 @@ export class EventHandlers {
       const sessionId = Math.random().toString(36).substring(2, 6);
       const finalId = `${identifier}-${sessionId}`;
       
-      console.log('[ObsidianObserver] Generated machine identifier:', finalId);
+      this.log('[ObsidianObserver] Generated machine identifier:', finalId);
       return finalId;
       
     } catch (error) {
@@ -189,7 +195,7 @@ export class EventHandlers {
       });
       this.eventRefs.push(readyRef);
 
-      console.log('[ObsidianObserver] Event handlers registered successfully (open, save, rename, delete, layout-ready)');
+      this.log('[ObsidianObserver] Event handlers registered successfully (open, save, rename, delete, layout-ready)');
     } catch (error) {
       console.error('[ObsidianObserver] Error registering event handlers:', error);
     }
@@ -206,7 +212,7 @@ export class EventHandlers {
       // Flush any remaining log entries
       this.logger.flushBuffer();
 
-      console.log('[ObsidianObserver] Event handlers unregistered successfully');
+      this.log('[ObsidianObserver] Event handlers unregistered successfully');
     } catch (error) {
       console.error('[ObsidianObserver] Error unregistering event handlers:', error);
     }

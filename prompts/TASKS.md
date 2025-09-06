@@ -216,3 +216,6 @@
 
   - [I] Update the system to also create `.obsidian/snippets/obsidianObserverEventsTable.css` when creating the other files.
   **COMPLETED**: 20250101-230000
+
+  - [I] BUG: The configuration flag to toggle Console Logging doesn't work - it always generates console logs. Fix it.
+  **COMPLETED**: 20250101-235000

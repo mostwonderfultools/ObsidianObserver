@@ -18,8 +18,14 @@ export default class ObsidianObserverPlugin extends Plugin {
     this.settings = { ...DEFAULT_SETTINGS };
   }
 
+  private log(message: string, ...args: any[]): void {
+    if (this.settings.enableConsoleLog) {
+      console.log(message, ...args);
+    }
+  }
+
   async onload() {
-    console.log('[ObsidianObserver] Loading plugin...');
+    this.log('[ObsidianObserver] Loading plugin...');
 
     try {
       // Load settings
@@ -93,7 +99,7 @@ export default class ObsidianObserverPlugin extends Plugin {
         name: 'ObsidianObserver: Debug Hostname',
         callback: () => {
           const hostname = this.getHostname();
-          console.log('[ObsidianObserver] Debug - Final hostname result:', hostname);
+          this.log('[ObsidianObserver] Debug - Final hostname result:', hostname);
           new Notice(`Hostname: ${hostname}`);
         }
       });
@@ -123,7 +129,7 @@ export default class ObsidianObserverPlugin extends Plugin {
       };
       await this.logger.logEvent(pluginLoadedEvent);
 
-      console.log('[ObsidianObserver] Plugin loaded successfully');
+      this.log('[ObsidianObserver] Plugin loaded successfully');
     } catch (error) {
       console.error('[ObsidianObserver] Error loading plugin:', error);
     }
@@ -179,7 +185,7 @@ export default class ObsidianObserverPlugin extends Plugin {
           const os = require('os');
           if (os && typeof os.hostname === 'function') {
             const hostname = os.hostname();
-            console.log('[ObsidianObserver] os.hostname() result:', hostname);
+            this.log('[ObsidianObserver] os.hostname() result:', hostname);
             
             // Check if we got a meaningful hostname (not localhost or empty)
             if (hostname && 
@@ -191,7 +197,7 @@ export default class ObsidianObserverPlugin extends Plugin {
             }
           }
         } catch (osError) {
-          console.log('[ObsidianObserver] os module not available or error:', osError);
+          this.log('[ObsidianObserver] os module not available or error:', osError);
         }
       }
       
@@ -233,7 +239,7 @@ export default class ObsidianObserverPlugin extends Plugin {
             }
           }
         } catch (vaultError) {
-          console.log('[ObsidianObserver] Could not get vault name:', vaultError);
+          this.log('[ObsidianObserver] Could not get vault name:', vaultError);
         }
       }
       
@@ -255,7 +261,7 @@ export default class ObsidianObserverPlugin extends Plugin {
       const sessionId = Math.random().toString(36).substring(2, 6);
       const finalId = `${identifier}-${sessionId}`;
       
-      console.log('[ObsidianObserver] Generated machine identifier:', finalId);
+      this.log('[ObsidianObserver] Generated machine identifier:', finalId);
       return finalId;
       
     } catch (error) {
@@ -271,7 +277,7 @@ export default class ObsidianObserverPlugin extends Plugin {
     
     // Listen for window beforeunload event using registerDomEvent
     this.registerDomEvent(window, 'beforeunload', async (event: BeforeUnloadEvent) => {
-      console.log('[ObsidianObserver] Application quitting detected via beforeunload...');
+      this.log('[ObsidianObserver] Application quitting detected via beforeunload...');
       
       try {
         // Log quit event
@@ -303,7 +309,7 @@ export default class ObsidianObserverPlugin extends Plugin {
     // Listen for Obsidian workspace close events
     this.registerEvent(
       this.app.workspace.on('quit', async () => {
-        console.log('[ObsidianObserver] Workspace quit event detected...');
+        this.log('[ObsidianObserver] Workspace quit event detected...');
         
         try {
           if (this.logger) {
@@ -333,7 +339,7 @@ export default class ObsidianObserverPlugin extends Plugin {
   }
 
   async onunload() {
-    console.log('[ObsidianObserver] Unloading plugin...');
+    this.log('[ObsidianObserver] Unloading plugin...');
 
     try {
       // Unregister event handlers
@@ -346,7 +352,7 @@ export default class ObsidianObserverPlugin extends Plugin {
         await this.logger.flushBuffer();
       }
 
-      console.log('[ObsidianObserver] Plugin unloaded successfully');
+      this.log('[ObsidianObserver] Plugin unloaded successfully');
     } catch (error) {
       console.error('[ObsidianObserver] Error unloading plugin:', error);
     }

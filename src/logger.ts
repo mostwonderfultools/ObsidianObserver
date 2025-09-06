@@ -14,6 +14,12 @@ export class EventLogger {
     this.pluginVersion = pluginVersion;
   }
 
+  private log(message: string, ...args: any[]): void {
+    if (this.config.enableConsoleLog) {
+      console.log(message, ...args);
+    }
+  }
+
   private getPluginVersion(): string {
     return this.pluginVersion;
   }
@@ -27,7 +33,7 @@ export class EventLogger {
           const os = require('os');
           if (os && typeof os.hostname === 'function') {
             const hostname = os.hostname();
-            console.log('[ObsidianObserver] os.hostname() result:', hostname);
+            this.log('[ObsidianObserver] os.hostname() result:', hostname);
             
             // Check if we got a meaningful hostname (not localhost or empty)
             if (hostname && 
@@ -39,7 +45,7 @@ export class EventLogger {
             }
           }
         } catch (osError) {
-          console.log('[ObsidianObserver] os module not available or error:', osError);
+          this.log('[ObsidianObserver] os module not available or error:', osError);
         }
       }
       
@@ -81,7 +87,7 @@ export class EventLogger {
             }
           }
         } catch (vaultError) {
-          console.log('[ObsidianObserver] Could not get vault name:', vaultError);
+          this.log('[ObsidianObserver] Could not get vault name:', vaultError);
         }
       }
       
@@ -103,7 +109,7 @@ export class EventLogger {
       const sessionId = Math.random().toString(36).substring(2, 6);
       const finalId = `${identifier}-${sessionId}`;
       
-      console.log('[ObsidianObserver] Generated machine identifier:', finalId);
+      this.log('[ObsidianObserver] Generated machine identifier:', finalId);
       return finalId;
       
     } catch (error) {
@@ -120,7 +126,7 @@ export class EventLogger {
 
   updateConfig(newConfig: LoggerConfig) {
     this.config = newConfig;
-    console.log('[ObsidianObserver] Logger configuration updated:', newConfig);
+    this.log('[ObsidianObserver] Logger configuration updated:', newConfig);
   }
 
   async ensureEventsDirectoryExists(): Promise<void> {
@@ -134,19 +140,19 @@ export class EventLogger {
         // Create the events directory
         try {
           await this.app.vault.createFolder(eventsDir);
-          console.log(`[ObsidianObserver] Created events directory: ${eventsDir}`);
+          this.log(`[ObsidianObserver] Created events directory: ${eventsDir}`);
           
           // Refresh the file explorer to show the new directory
           this.app.workspace.trigger('file-explorer:refresh');
         } catch (createError: any) {
           if (createError.message && createError.message.includes('already exists')) {
-            console.log(`[ObsidianObserver] Events directory already exists: ${eventsDir}`);
+            this.log(`[ObsidianObserver] Events directory already exists: ${eventsDir}`);
           } else {
             throw createError;
           }
         }
       } else {
-        console.log(`[ObsidianObserver] Events directory already exists: ${eventsDir}`);
+        this.log(`[ObsidianObserver] Events directory already exists: ${eventsDir}`);
       }
     } catch (error) {
       console.error('[ObsidianObserver] Error ensuring events directory exists:', error);
@@ -165,7 +171,7 @@ export class EventLogger {
 
       // Console output if enabled
       if (this.config.enableConsoleLog) {
-        console.log(`[ObsidianObserver] ${eventLog.eventType}: ${eventLog.filePath}`);
+        this.log(`[ObsidianObserver] ${eventLog.eventType}: ${eventLog.filePath}`);
       }
     } catch (error) {
       console.error('[ObsidianObserver] Error logging event:', error);
@@ -181,7 +187,7 @@ export class EventLogger {
         await this.createEventNote(eventLog);
       }
       
-      console.log(`[ObsidianObserver] Buffer flushed: ${this.logBuffer.length} event notes created`);
+      this.log(`[ObsidianObserver] Buffer flushed: ${this.logBuffer.length} event notes created`);
       this.logBuffer = [];
     } catch (error) {
       console.error('[ObsidianObserver] Error flushing log buffer:', error);
@@ -226,13 +232,13 @@ export class EventLogger {
       const existingFile = this.app.vault.getAbstractFileByPath(filePath);
       
       if (existingFile) {
-        console.log(`[ObsidianObserver] Event note already exists: ${filePath}`);
+        this.log(`[ObsidianObserver] Event note already exists: ${filePath}`);
         return;
       }
 
       // Create the note file
       await this.app.vault.create(filePath, noteContent);
-      console.log(`[ObsidianObserver] Created event note: ${filePath}`);
+      this.log(`[ObsidianObserver] Created event note: ${filePath}`);
       
       // Refresh the file explorer to show the new file
       this.app.workspace.trigger('file-explorer:refresh');
@@ -433,13 +439,13 @@ LIMIT 30
       const existingFile = this.app.vault.getAbstractFileByPath(summaryPath);
       
       if (existingFile) {
-        console.log(`[ObsidianObserver] Summary file already exists: ${summaryPath}`);
+        this.log(`[ObsidianObserver] Summary file already exists: ${summaryPath}`);
         return;
       }
 
       // Create the summary file
       await this.app.vault.create(summaryPath, summaryContent);
-      console.log(`[ObsidianObserver] Created summary file: ${summaryPath}`);
+      this.log(`[ObsidianObserver] Created summary file: ${summaryPath}`);
       
       // Refresh the file explorer to show the new file
       this.app.workspace.trigger('file-explorer:refresh');
@@ -511,13 +517,13 @@ views:
       const existingFile = this.app.vault.getAbstractFileByPath(basePath);
       
       if (existingFile) {
-        console.log(`[ObsidianObserver] EventsBase.base file already exists: ${basePath}`);
+        this.log(`[ObsidianObserver] EventsBase.base file already exists: ${basePath}`);
         return;
       }
 
       // Create the base file
       await this.app.vault.create(basePath, baseContent);
-      console.log(`[ObsidianObserver] Created EventsBase.base file: ${basePath}`);
+      this.log(`[ObsidianObserver] Created EventsBase.base file: ${basePath}`);
       
     } catch (error) {
       console.error(`[ObsidianObserver] Error creating EventsBase.base file:`, error);
@@ -666,13 +672,13 @@ views:
       const existingFile = this.app.vault.getAbstractFileByPath(cssPath);
       
       if (existingFile) {
-        console.log(`[ObsidianObserver] CSS file already exists: ${cssPath}`);
+        this.log(`[ObsidianObserver] CSS file already exists: ${cssPath}`);
         return;
       }
 
       // Create the CSS file
       await this.app.vault.create(cssPath, cssContent);
-      console.log(`[ObsidianObserver] Created CSS file: ${cssPath}`);
+      this.log(`[ObsidianObserver] Created CSS file: ${cssPath}`);
       
     } catch (error) {
       console.error(`[ObsidianObserver] Error creating CSS file:`, error);
@@ -1028,13 +1034,13 @@ WHERE OOEvent_GUID = "YOUR_GUID_HERE"
       const existingFile = this.app.vault.getAbstractFileByPath(summaryPath);
       
       if (existingFile) {
-        console.log(`[ObsidianObserver] Main summary file already exists: ${summaryPath}`);
+        this.log(`[ObsidianObserver] Main summary file already exists: ${summaryPath}`);
         return;
       }
 
       // Create the summary file
       await this.app.vault.create(summaryPath, summaryContent);
-      console.log(`[ObsidianObserver] Created main summary file: ${summaryPath}`);
+      this.log(`[ObsidianObserver] Created main summary file: ${summaryPath}`);
       
       // Also create the EventsBase.base file
       await this.createEventsBaseFile();
@@ -1061,26 +1067,26 @@ WHERE OOEvent_GUID = "YOUR_GUID_HERE"
       const existingSummaryFile = this.app.vault.getAbstractFileByPath(summaryPath);
       if (existingSummaryFile) {
         await this.app.vault.delete(existingSummaryFile);
-        console.log(`[ObsidianObserver] Deleted existing summary file: ${summaryPath}`);
+        this.log(`[ObsidianObserver] Deleted existing summary file: ${summaryPath}`);
       }
 
       // Check if base file exists and delete it
       const existingBaseFile = this.app.vault.getAbstractFileByPath(basePath);
       if (existingBaseFile) {
         await this.app.vault.delete(existingBaseFile);
-        console.log(`[ObsidianObserver] Deleted existing EventsBase.base file: ${basePath}`);
+        this.log(`[ObsidianObserver] Deleted existing EventsBase.base file: ${basePath}`);
       }
 
       // Check if CSS file exists and delete it
       const existingCSSFile = this.app.vault.getAbstractFileByPath(cssPath);
       if (existingCSSFile) {
         await this.app.vault.delete(existingCSSFile);
-        console.log(`[ObsidianObserver] Deleted existing CSS file: ${cssPath}`);
+        this.log(`[ObsidianObserver] Deleted existing CSS file: ${cssPath}`);
       }
 
       // Create new files with fresh content
       await this.createMainSummaryNote();
-      console.log(`[ObsidianObserver] Refreshed main summary file: ${summaryPath}`);
+      this.log(`[ObsidianObserver] Refreshed main summary file: ${summaryPath}`);
       
     } catch (error) {
       console.error(`[ObsidianObserver] Error refreshing main summary file:`, error);

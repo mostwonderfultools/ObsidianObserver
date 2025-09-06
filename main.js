@@ -80,6 +80,11 @@ var EventLogger = class {
     this.config = config;
     this.pluginVersion = pluginVersion;
   }
+  log(message, ...args) {
+    if (this.config.enableConsoleLog) {
+      console.log(message, ...args);
+    }
+  }
   getPluginVersion() {
     return this.pluginVersion;
   }
@@ -90,13 +95,13 @@ var EventLogger = class {
           const os = require("os");
           if (os && typeof os.hostname === "function") {
             const hostname = os.hostname();
-            console.log("[ObsidianObserver] os.hostname() result:", hostname);
+            this.log("[ObsidianObserver] os.hostname() result:", hostname);
             if (hostname && hostname.trim() && hostname !== "localhost" && hostname !== "127.0.0.1" && hostname !== "::1") {
               return hostname;
             }
           }
         } catch (osError) {
-          console.log("[ObsidianObserver] os module not available or error:", osError);
+          this.log("[ObsidianObserver] os module not available or error:", osError);
         }
       }
       if (typeof process !== "undefined" && process.env) {
@@ -124,7 +129,7 @@ var EventLogger = class {
             }
           }
         } catch (vaultError) {
-          console.log("[ObsidianObserver] Could not get vault name:", vaultError);
+          this.log("[ObsidianObserver] Could not get vault name:", vaultError);
         }
       }
       let identifier = machineId;
@@ -139,7 +144,7 @@ var EventLogger = class {
       }
       const sessionId = Math.random().toString(36).substring(2, 6);
       const finalId = `${identifier}-${sessionId}`;
-      console.log("[ObsidianObserver] Generated machine identifier:", finalId);
+      this.log("[ObsidianObserver] Generated machine identifier:", finalId);
       return finalId;
     } catch (error) {
       console.warn("[ObsidianObserver] Could not determine hostname:", error);
@@ -152,7 +157,7 @@ var EventLogger = class {
   }
   updateConfig(newConfig) {
     this.config = newConfig;
-    console.log("[ObsidianObserver] Logger configuration updated:", newConfig);
+    this.log("[ObsidianObserver] Logger configuration updated:", newConfig);
   }
   async ensureEventsDirectoryExists() {
     try {
@@ -161,17 +166,17 @@ var EventLogger = class {
       if (!dirExists) {
         try {
           await this.app.vault.createFolder(eventsDir);
-          console.log(`[ObsidianObserver] Created events directory: ${eventsDir}`);
+          this.log(`[ObsidianObserver] Created events directory: ${eventsDir}`);
           this.app.workspace.trigger("file-explorer:refresh");
         } catch (createError) {
           if (createError.message && createError.message.includes("already exists")) {
-            console.log(`[ObsidianObserver] Events directory already exists: ${eventsDir}`);
+            this.log(`[ObsidianObserver] Events directory already exists: ${eventsDir}`);
           } else {
             throw createError;
           }
         }
       } else {
-        console.log(`[ObsidianObserver] Events directory already exists: ${eventsDir}`);
+        this.log(`[ObsidianObserver] Events directory already exists: ${eventsDir}`);
       }
     } catch (error) {
       console.error("[ObsidianObserver] Error ensuring events directory exists:", error);
@@ -184,7 +189,7 @@ var EventLogger = class {
         await this.flushBuffer();
       }
       if (this.config.enableConsoleLog) {
-        console.log(`[ObsidianObserver] ${eventLog.eventType}: ${eventLog.filePath}`);
+        this.log(`[ObsidianObserver] ${eventLog.eventType}: ${eventLog.filePath}`);
       }
     } catch (error) {
       console.error("[ObsidianObserver] Error logging event:", error);
@@ -197,7 +202,7 @@ var EventLogger = class {
       for (const eventLog of this.logBuffer) {
         await this.createEventNote(eventLog);
       }
-      console.log(`[ObsidianObserver] Buffer flushed: ${this.logBuffer.length} event notes created`);
+      this.log(`[ObsidianObserver] Buffer flushed: ${this.logBuffer.length} event notes created`);
       this.logBuffer = [];
     } catch (error) {
       console.error("[ObsidianObserver] Error flushing log buffer:", error);
@@ -233,11 +238,11 @@ var EventLogger = class {
       const noteContent = this.createNoteContent(frontmatter, eventLog);
       const existingFile = this.app.vault.getAbstractFileByPath(filePath);
       if (existingFile) {
-        console.log(`[ObsidianObserver] Event note already exists: ${filePath}`);
+        this.log(`[ObsidianObserver] Event note already exists: ${filePath}`);
         return;
       }
       await this.app.vault.create(filePath, noteContent);
-      console.log(`[ObsidianObserver] Created event note: ${filePath}`);
+      this.log(`[ObsidianObserver] Created event note: ${filePath}`);
       this.app.workspace.trigger("file-explorer:refresh");
     } catch (error) {
       console.error(`[ObsidianObserver] Error creating event note:`, error);
@@ -428,11 +433,11 @@ LIMIT 30
 `;
       const existingFile = this.app.vault.getAbstractFileByPath(summaryPath);
       if (existingFile) {
-        console.log(`[ObsidianObserver] Summary file already exists: ${summaryPath}`);
+        this.log(`[ObsidianObserver] Summary file already exists: ${summaryPath}`);
         return;
       }
       await this.app.vault.create(summaryPath, summaryContent);
-      console.log(`[ObsidianObserver] Created summary file: ${summaryPath}`);
+      this.log(`[ObsidianObserver] Created summary file: ${summaryPath}`);
       this.app.workspace.trigger("file-explorer:refresh");
     } catch (error) {
       console.error(`[ObsidianObserver] Error creating summary file:`, error);
@@ -495,11 +500,11 @@ views:
       note.OOEvent_LocalTimestamp: 213`;
       const existingFile = this.app.vault.getAbstractFileByPath(basePath);
       if (existingFile) {
-        console.log(`[ObsidianObserver] EventsBase.base file already exists: ${basePath}`);
+        this.log(`[ObsidianObserver] EventsBase.base file already exists: ${basePath}`);
         return;
       }
       await this.app.vault.create(basePath, baseContent);
-      console.log(`[ObsidianObserver] Created EventsBase.base file: ${basePath}`);
+      this.log(`[ObsidianObserver] Created EventsBase.base file: ${basePath}`);
     } catch (error) {
       console.error(`[ObsidianObserver] Error creating EventsBase.base file:`, error);
     }
@@ -641,11 +646,11 @@ views:
 */`;
       const existingFile = this.app.vault.getAbstractFileByPath(cssPath);
       if (existingFile) {
-        console.log(`[ObsidianObserver] CSS file already exists: ${cssPath}`);
+        this.log(`[ObsidianObserver] CSS file already exists: ${cssPath}`);
         return;
       }
       await this.app.vault.create(cssPath, cssContent);
-      console.log(`[ObsidianObserver] Created CSS file: ${cssPath}`);
+      this.log(`[ObsidianObserver] Created CSS file: ${cssPath}`);
     } catch (error) {
       console.error(`[ObsidianObserver] Error creating CSS file:`, error);
     }
@@ -994,11 +999,11 @@ WHERE OOEvent_GUID = "YOUR_GUID_HERE"
 `;
       const existingFile = this.app.vault.getAbstractFileByPath(summaryPath);
       if (existingFile) {
-        console.log(`[ObsidianObserver] Main summary file already exists: ${summaryPath}`);
+        this.log(`[ObsidianObserver] Main summary file already exists: ${summaryPath}`);
         return;
       }
       await this.app.vault.create(summaryPath, summaryContent);
-      console.log(`[ObsidianObserver] Created main summary file: ${summaryPath}`);
+      this.log(`[ObsidianObserver] Created main summary file: ${summaryPath}`);
       await this.createEventsBaseFile();
       await this.createCSSFile();
       this.app.workspace.trigger("file-explorer:refresh");
@@ -1014,20 +1019,20 @@ WHERE OOEvent_GUID = "YOUR_GUID_HERE"
       const existingSummaryFile = this.app.vault.getAbstractFileByPath(summaryPath);
       if (existingSummaryFile) {
         await this.app.vault.delete(existingSummaryFile);
-        console.log(`[ObsidianObserver] Deleted existing summary file: ${summaryPath}`);
+        this.log(`[ObsidianObserver] Deleted existing summary file: ${summaryPath}`);
       }
       const existingBaseFile = this.app.vault.getAbstractFileByPath(basePath);
       if (existingBaseFile) {
         await this.app.vault.delete(existingBaseFile);
-        console.log(`[ObsidianObserver] Deleted existing EventsBase.base file: ${basePath}`);
+        this.log(`[ObsidianObserver] Deleted existing EventsBase.base file: ${basePath}`);
       }
       const existingCSSFile = this.app.vault.getAbstractFileByPath(cssPath);
       if (existingCSSFile) {
         await this.app.vault.delete(existingCSSFile);
-        console.log(`[ObsidianObserver] Deleted existing CSS file: ${cssPath}`);
+        this.log(`[ObsidianObserver] Deleted existing CSS file: ${cssPath}`);
       }
       await this.createMainSummaryNote();
-      console.log(`[ObsidianObserver] Refreshed main summary file: ${summaryPath}`);
+      this.log(`[ObsidianObserver] Refreshed main summary file: ${summaryPath}`);
     } catch (error) {
       console.error(`[ObsidianObserver] Error refreshing main summary file:`, error);
       throw error;
@@ -1048,9 +1053,14 @@ var EventHandlers = class {
     this.logger = logger;
     this.loggerConfig = logger.getConfig();
   }
+  log(message, ...args) {
+    if (this.loggerConfig.enableConsoleLog) {
+      console.log(message, ...args);
+    }
+  }
   updateLoggerConfig(newConfig) {
     this.loggerConfig = newConfig;
-    console.log("[ObsidianObserver] Event handlers configuration updated:", newConfig);
+    this.log("[ObsidianObserver] Event handlers configuration updated:", newConfig);
   }
   getHostname() {
     try {
@@ -1059,13 +1069,13 @@ var EventHandlers = class {
           const os = require("os");
           if (os && typeof os.hostname === "function") {
             const hostname = os.hostname();
-            console.log("[ObsidianObserver] os.hostname() result:", hostname);
+            this.log("[ObsidianObserver] os.hostname() result:", hostname);
             if (hostname && hostname.trim() && hostname !== "localhost" && hostname !== "127.0.0.1" && hostname !== "::1") {
               return hostname;
             }
           }
         } catch (osError) {
-          console.log("[ObsidianObserver] os module not available or error:", osError);
+          this.log("[ObsidianObserver] os module not available or error:", osError);
         }
       }
       if (typeof process !== "undefined" && process.env) {
@@ -1093,7 +1103,7 @@ var EventHandlers = class {
             }
           }
         } catch (vaultError) {
-          console.log("[ObsidianObserver] Could not get vault name:", vaultError);
+          this.log("[ObsidianObserver] Could not get vault name:", vaultError);
         }
       }
       let identifier = machineId;
@@ -1108,7 +1118,7 @@ var EventHandlers = class {
       }
       const sessionId = Math.random().toString(36).substring(2, 6);
       const finalId = `${identifier}-${sessionId}`;
-      console.log("[ObsidianObserver] Generated machine identifier:", finalId);
+      this.log("[ObsidianObserver] Generated machine identifier:", finalId);
       return finalId;
     } catch (error) {
       console.warn("[ObsidianObserver] Could not determine hostname:", error);
@@ -1161,7 +1171,7 @@ var EventHandlers = class {
         this.handleAppReady();
       });
       this.eventRefs.push(readyRef);
-      console.log("[ObsidianObserver] Event handlers registered successfully (open, save, rename, delete, layout-ready)");
+      this.log("[ObsidianObserver] Event handlers registered successfully (open, save, rename, delete, layout-ready)");
     } catch (error) {
       console.error("[ObsidianObserver] Error registering event handlers:", error);
     }
@@ -1173,7 +1183,7 @@ var EventHandlers = class {
       }
       this.eventRefs = [];
       this.logger.flushBuffer();
-      console.log("[ObsidianObserver] Event handlers unregistered successfully");
+      this.log("[ObsidianObserver] Event handlers unregistered successfully");
     } catch (error) {
       console.error("[ObsidianObserver] Error unregistering event handlers:", error);
     }
@@ -1388,8 +1398,13 @@ var ObsidianObserverPlugin = class extends import_obsidian2.Plugin {
     super(app, manifest);
     this.settings = { ...DEFAULT_SETTINGS };
   }
+  log(message, ...args) {
+    if (this.settings.enableConsoleLog) {
+      console.log(message, ...args);
+    }
+  }
   async onload() {
-    console.log("[ObsidianObserver] Loading plugin...");
+    this.log("[ObsidianObserver] Loading plugin...");
     try {
       await this.loadSettings();
       const loggerConfig = {
@@ -1432,7 +1447,7 @@ var ObsidianObserverPlugin = class extends import_obsidian2.Plugin {
         name: "ObsidianObserver: Debug Hostname",
         callback: () => {
           const hostname = this.getHostname();
-          console.log("[ObsidianObserver] Debug - Final hostname result:", hostname);
+          this.log("[ObsidianObserver] Debug - Final hostname result:", hostname);
           new import_obsidian2.Notice(`Hostname: ${hostname}`);
         }
       });
@@ -1456,7 +1471,7 @@ var ObsidianObserverPlugin = class extends import_obsidian2.Plugin {
         }
       };
       await this.logger.logEvent(pluginLoadedEvent);
-      console.log("[ObsidianObserver] Plugin loaded successfully");
+      this.log("[ObsidianObserver] Plugin loaded successfully");
     } catch (error) {
       console.error("[ObsidianObserver] Error loading plugin:", error);
     }
@@ -1493,13 +1508,13 @@ var ObsidianObserverPlugin = class extends import_obsidian2.Plugin {
           const os = require("os");
           if (os && typeof os.hostname === "function") {
             const hostname = os.hostname();
-            console.log("[ObsidianObserver] os.hostname() result:", hostname);
+            this.log("[ObsidianObserver] os.hostname() result:", hostname);
             if (hostname && hostname.trim() && hostname !== "localhost" && hostname !== "127.0.0.1" && hostname !== "::1") {
               return hostname;
             }
           }
         } catch (osError) {
-          console.log("[ObsidianObserver] os module not available or error:", osError);
+          this.log("[ObsidianObserver] os module not available or error:", osError);
         }
       }
       if (typeof process !== "undefined" && process.env) {
@@ -1527,7 +1542,7 @@ var ObsidianObserverPlugin = class extends import_obsidian2.Plugin {
             }
           }
         } catch (vaultError) {
-          console.log("[ObsidianObserver] Could not get vault name:", vaultError);
+          this.log("[ObsidianObserver] Could not get vault name:", vaultError);
         }
       }
       let identifier = machineId;
@@ -1542,7 +1557,7 @@ var ObsidianObserverPlugin = class extends import_obsidian2.Plugin {
       }
       const sessionId = Math.random().toString(36).substring(2, 6);
       const finalId = `${identifier}-${sessionId}`;
-      console.log("[ObsidianObserver] Generated machine identifier:", finalId);
+      this.log("[ObsidianObserver] Generated machine identifier:", finalId);
       return finalId;
     } catch (error) {
       console.warn("[ObsidianObserver] Could not determine hostname:", error);
@@ -1552,7 +1567,7 @@ var ObsidianObserverPlugin = class extends import_obsidian2.Plugin {
   }
   registerQuitDetectionEvents() {
     this.registerDomEvent(window, "beforeunload", async (event) => {
-      console.log("[ObsidianObserver] Application quitting detected via beforeunload...");
+      this.log("[ObsidianObserver] Application quitting detected via beforeunload...");
       try {
         if (this.logger) {
           const { generateBase32Guid: generateBase32Guid2 } = await Promise.resolve().then(() => (init_utils(), utils_exports));
@@ -1577,7 +1592,7 @@ var ObsidianObserverPlugin = class extends import_obsidian2.Plugin {
       }
     });
     this.registerEvent(this.app.workspace.on("quit", async () => {
-      console.log("[ObsidianObserver] Workspace quit event detected...");
+      this.log("[ObsidianObserver] Workspace quit event detected...");
       try {
         if (this.logger) {
           const { generateBase32Guid: generateBase32Guid2 } = await Promise.resolve().then(() => (init_utils(), utils_exports));
@@ -1603,7 +1618,7 @@ var ObsidianObserverPlugin = class extends import_obsidian2.Plugin {
     }));
   }
   async onunload() {
-    console.log("[ObsidianObserver] Unloading plugin...");
+    this.log("[ObsidianObserver] Unloading plugin...");
     try {
       if (this.eventHandlers) {
         this.eventHandlers.unregisterEventHandlers();
@@ -1611,7 +1626,7 @@ var ObsidianObserverPlugin = class extends import_obsidian2.Plugin {
       if (this.logger) {
         await this.logger.flushBuffer();
       }
-      console.log("[ObsidianObserver] Plugin unloaded successfully");
+      this.log("[ObsidianObserver] Plugin unloaded successfully");
     } catch (error) {
       console.error("[ObsidianObserver] Error unloading plugin:", error);
     }
