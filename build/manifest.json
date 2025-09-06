@@ -1,7 +1,7 @@
 {
   "id": "obsidian-explorer",
   "name": "ObsidianObserver",
-  "version": "00.00.09_0086",
+  "version": "00.00.10_0110",
   "minAppVersion": "1.0.0",
   "description": "Track note open, close, and save events for debugging and analytics",
   "author": "TestSidian",

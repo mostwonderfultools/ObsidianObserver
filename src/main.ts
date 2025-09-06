@@ -1,4 +1,4 @@
-import { Plugin, Notice, PluginSettingTab, Setting, App } from 'obsidian';
+import { Plugin, Notice, PluginSettingTab, Setting, App, TFile } from 'obsidian';
 import { EventLogger } from './logger';
 import { EventHandlers } from './eventHandlers';
 import { LoggerConfig, PluginSettings } from './types';
@@ -74,26 +74,25 @@ export default class ObsidianObserverPlugin extends Plugin {
         }
       });
 
-      // Add command palette command for refreshing summary file
+      // Add command palette command for rebuilding files
       this.addCommand({
         id: 'obsidian-observer-refresh-summary',
-        name: 'ObsidianObserver: Refresh Summary',
+        name: 'Rebuild Files',
         callback: async () => {
           await this.logger.refreshMainSummaryNote();
           // Refresh the file explorer to show any updated files
           this.app.workspace.trigger('file-explorer:refresh');
-          new Notice('Events summary refreshed!');
+          new Notice('Files rebuilt successfully!');
         }
       });
 
-      // Add command palette command for debugging hostname
+
+      // Add debug command
       this.addCommand({
-        id: 'obsidian-observer-debug-hostname',
-        name: 'ObsidianObserver: Debug Hostname',
-        callback: () => {
-          const hostname = this.getHostname();
-          this.log('[ObsidianObserver] Debug - Final hostname result:', hostname);
-          new Notice(`Hostname: ${hostname}`);
+        id: 'obsidian-observer-debug',
+        name: 'Debug',
+        callback: async () => {
+          await this.dumpDebugInfo();
         }
       });
 
@@ -137,15 +136,152 @@ export default class ObsidianObserverPlugin extends Plugin {
     await this.updateLoggerConfiguration();
   }
 
-  // Check if the CSS snippet file exists
-  async isCSSEnabled(): Promise<boolean> {
+  // Dump comprehensive debug information to console
+  async dumpDebugInfo(): Promise<void> {
+    // Collect all debug information into a single object
+    const eventsDir = this.settings.eventsFolder;
+    const eventsPath = `${eventsDir}/events`;
+    const summaryPath = `${eventsDir}/EventsSummary.md`;
+    const basePath = `${eventsDir}/EventsBase.base`;
+    const cssStatus = await this.getCSSStatus();
+    const hostname = this.getHostname();
+    
+    const eventsDirFile = this.app.vault.getAbstractFileByPath(eventsDir);
+    const eventsDirFile2 = this.app.vault.getAbstractFileByPath(eventsPath);
+    const summaryFile = this.app.vault.getAbstractFileByPath(summaryPath);
+    const baseFile = this.app.vault.getAbstractFileByPath(basePath);
+    const vaultFiles = this.app.vault.getFiles().slice(0, 10);
+    
+    const debugInfo = {
+      plugin: {
+        version: this.manifest.version,
+        settings: this.settings
+      },
+      vault: {
+        name: this.app.vault.getName(),
+        path: (this.app.vault.adapter as any).basePath || 'Unknown',
+        totalFiles: this.app.vault.getFiles().length,
+        sampleFiles: vaultFiles.map(file => ({ path: file.path, type: file.constructor.name }))
+      },
+      css: cssStatus,
+      events: {
+        folder: {
+          setting: eventsDir,
+          exists: eventsDirFile ? 'YES' : 'NO',
+          type: eventsDirFile ? eventsDirFile.constructor.name : null
+        },
+        directory: {
+          path: eventsPath,
+          exists: eventsDirFile2 ? 'YES' : 'NO'
+        }
+      },
+      summary: {
+        file: {
+          path: summaryPath,
+          exists: summaryFile ? 'YES' : 'NO'
+        },
+        base: {
+          path: basePath,
+          exists: baseFile ? 'YES' : 'NO'
+        }
+      },
+      logger: {
+        initialized: this.logger ? 'YES' : 'NO',
+        config: this.logger ? {
+          eventsFolder: this.logger['config']?.eventsFolder,
+          enableConsoleLog: this.logger['config']?.enableConsoleLog
+        } : null
+      },
+      eventHandlers: {
+        initialized: this.eventHandlers ? 'YES' : 'NO'
+      },
+      hostname: hostname,
+      timestamp: new Date().toISOString()
+    };
+    
+    // Output everything in a single line
+    console.log('ObsidianObserver Debug:', JSON.stringify(debugInfo, null, 0));
+    new Notice('Debug information dumped to console!');
+  }
+
+  // Check if the CSS snippet file exists and get its status
+  async getCSSStatus(): Promise<{exists: boolean, enabled: boolean, message: string}> {
     try {
-      const cssPath = `.obsidian/snippets/obsidianObserverEventsTable.css`;
-      const cssFile = this.app.vault.getAbstractFileByPath(cssPath);
-      return cssFile !== null;
+      // Use configDir to access the .obsidian directory properly
+      const configDir = this.app.vault.configDir;
+      const cssPath = `${configDir}/snippets/obsidianObserverEventsTable.css`;
+      const appearancePath = `${configDir}/appearance.json`;
+      
+      // Debug logging
+      this.log('[ObsidianObserver] CSS Detection Debug:');
+      this.log('  - Config Dir:', configDir);
+      this.log('  - CSS Path:', cssPath);
+      this.log('  - Appearance Path:', appearancePath);
+      
+      // Check if CSS file exists using FileSystemAdapter
+      const adapter = this.app.vault.adapter;
+      const cssExists = await adapter.exists(cssPath);
+      this.log('  - CSS File exists:', cssExists ? 'YES' : 'NO');
+      
+      if (!cssExists) {
+        return {
+          exists: false,
+          enabled: false,
+          message: 'CSS file not found in .obsidian/snippets/'
+        };
+      }
+
+      // Check if the CSS snippet is enabled by reading the appearance.json configuration
+      const appearanceExists = await adapter.exists(appearancePath);
+      this.log('  - Appearance File exists:', appearanceExists ? 'YES' : 'NO');
+      
+      if (appearanceExists) {
+        try {
+          const appearanceContent = await adapter.read(appearancePath);
+          const appearance = JSON.parse(appearanceContent);
+          
+          // Check if the snippet is in the enabled snippets list
+          const enabledSnippets = appearance?.enabledCssSnippets || [];
+          const isEnabled = enabledSnippets.includes('obsidianObserverEventsTable');
+          
+          this.log('  - Enabled snippets:', enabledSnippets);
+          this.log('  - CSS snippet enabled:', isEnabled);
+          
+          if (isEnabled) {
+            return {
+              exists: true,
+              enabled: true,
+              message: 'CSS snippet is present and enabled'
+            };
+          } else {
+            return {
+              exists: true,
+              enabled: false,
+              message: 'CSS file exists but snippet is not enabled in Appearance settings'
+            };
+          }
+        } catch (appearanceError) {
+          this.log('[ObsidianObserver] Error reading appearance.json:', appearanceError);
+          return {
+            exists: true,
+            enabled: false,
+            message: 'CSS file exists but cannot verify if snippet is enabled'
+          };
+        }
+      } else {
+        return {
+          exists: true,
+          enabled: false,
+          message: 'CSS file exists but cannot verify if snippet is enabled'
+        };
+      }
     } catch (error) {
       this.log('[ObsidianObserver] Error checking CSS file:', error);
-      return false;
+      return {
+        exists: false,
+        enabled: false,
+        message: 'Error checking CSS file status'
+      };
     }
   }
 
@@ -419,19 +555,35 @@ class ObsidianObserverSettingTab extends PluginSettingTab {
 
   private async checkAndDisplayCSSWarning(containerEl: HTMLElement): Promise<void> {
     try {
-      const cssEnabled = await this.plugin.isCSSEnabled();
-      if (!cssEnabled) {
+      const cssStatus = await this.plugin.getCSSStatus();
+      
+      // Show warning if CSS file doesn't exist or is not enabled
+      if (!cssStatus.exists || !cssStatus.enabled) {
         const warningEl = containerEl.createDiv('setting-item');
         const infoEl = warningEl.createDiv('setting-item-info');
-        infoEl.createDiv('setting-item-name').setText('⚠️ CSS Styling Warning');
-        warningEl.createDiv('setting-item-description').setText(
-          'The table CSS file (obsidianObserverEventsTable.css) is not found in .obsidian/snippets/. Event tables may not display properly. Please ensure the CSS snippet is enabled in Appearance settings.'
-        );
+        
+        let warningTitle = '⚠️ CSS Styling Warning';
+        let warningMessage = '';
+        
+        if (!cssStatus.exists) {
+          warningMessage = 'The CSS file (obsidianObserverEventsTable.css) is not found in .obsidian/snippets/. Event tables may not display properly. Run the "Rebuild Files" command to recreate the CSS file, then enable it in Appearance → CSS snippets.';
+        } else if (!cssStatus.enabled) {
+          warningMessage = 'The CSS file exists but the snippet is not enabled. Please go to Appearance → CSS snippets and enable "obsidianObserverEventsTable.css" for proper table styling.';
+        }
+        
+        infoEl.createDiv('setting-item-name').setText(warningTitle);
+        warningEl.createDiv('setting-item-description').setText(warningMessage);
+        
         warningEl.style.color = 'var(--text-warning)';
         warningEl.style.border = '1px solid var(--text-warning)';
         warningEl.style.padding = '10px';
         warningEl.style.borderRadius = '4px';
         warningEl.style.marginBottom = '10px';
+        
+        // Add debug info in verbose mode
+        if (this.plugin.settings.enableConsoleLog) {
+          console.log('[ObsidianObserver] CSS Status:', cssStatus);
+        }
       }
     } catch (error) {
       console.error('[ObsidianObserver] Error checking CSS:', error);

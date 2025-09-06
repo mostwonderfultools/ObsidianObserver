@@ -252,3 +252,70 @@
      - for `--notes` - use the latest git commit message.
      - add `manifest.json` and `main.js`
      **COMPLETED**: 20250101-241500
+
+  - [I] Fix CSS warning to properly detect file existence and check if CSS snippet is enabled
+  **COMPLETED**: 20250101-241500
+  - [I] Build plugin with version 00.00.09_0087
+  **COMPLETED**: 20250101-241500
+
+  - [I] Add a command `ObsidianObserver - Debug` that dumps all the info to the console.
+  **COMPLETED**: 20250101-242000
+  - [I] Remove the command `ObsidianObserver - DebugHostname`
+  **COMPLETED**: 20250101-242200
+  - [I] Fix CSS detection to work around Obsidian's security restrictions on .obsidian directory access
+  **COMPLETED**: 20250101-242500
+  - [I] Build plugin with version 00.00.09_0091
+  **COMPLETED**: 20250101-242500
+  - [I] Fix CSS detection to read from appearance.json instead of app.json for enabledCssSnippets
+  **COMPLETED**: 20250101-243000
+  - [I] Build plugin with version 00.00.09_0092
+  **COMPLETED**: 20250101-243000
+  - [I] Fix CSS snippet name matching - remove .css extension when checking enabledCssSnippets array
+  **COMPLETED**: 20250101-243500
+  - [I] Build plugin with version 00.00.09_0097
+  **COMPLETED**: 20250101-243500
+  - [I] Change the name of the command `ObsidianObserver - Create Summary` to `Rebuild Files`
+  **COMPLETED**: 20250101-244000
+  - [I] Update the warning for the CSS file to run the command to recreate the CSS file.
+  **COMPLETED**: 20250101-244000
+  - [I] For the file creation routines, check that the contents are idential to the what is in memory
+    - Skip if the contents are the same.
+    - Warn the user if the contents will be different and offer options to 
+      a) backup the current file,
+      b) overwrite
+      c) cancel
+  **COMPLETED**: 20250101-244000
+  - [I] Change the name of the command `ObsidianObserver - Debug` to `Debug`
+  **COMPLETED**: 20250101-244000
+  - [I] Build plugin with version 00.00.09_0101
+  **COMPLETED**: 20250101-244000
+  - [I] update the Debug command to output everything in a single output line
+  **COMPLETED**: 20250101-244500
+  - [I] Build plugin with version 00.00.09_0105
+  **COMPLETED**: 20250101-244500
+  - [I] Fix refreshMainSummaryNote() to use safety checks instead of unconditionally deleting files
+  **COMPLETED**: 20250101-245000
+  - [I] Build plugin with version 00.00.09_0107
+  **COMPLETED**: 20250101-245000
+
+## Git Commit Message for v00.00.10
+
+```
+feat: Enhanced debug output and fixed file overwrite safety issues
+
+- Updated Debug command to output comprehensive JSON in single line format
+- Fixed critical bug where "Rebuild Files" command was overwriting user changes without warning
+- Implemented consistent safety checks across all file creation methods:
+  * Content comparison before overwriting
+  * User prompts with backup/overwrite/cancel options
+  * Timestamped backup creation when requested
+- Applied safety checks to createEventsBaseFile() and createCSSFile() methods
+- Modified refreshMainSummaryNote() to use safe creation methods instead of force-deleting
+- Ensured all file operations now respect user modifications and provide proper warnings
+
+This resolves the issue where user modifications to CSS files, summary files, and 
+EventsBase.base files were being silently overwritten by the plugin's rebuild operations.
+
+Version: 00.00.10_0110
+Build: 110
+```

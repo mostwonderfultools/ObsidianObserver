@@ -1,4 +1,4 @@
-import { App, TFile } from 'obsidian';
+import { App, TFile, Modal } from 'obsidian';
 import { EventLog, EventFrontmatter, LoggerConfig } from './types';
 
 export class EventLogger {
@@ -297,6 +297,60 @@ OOEvent_PluginVersion: ${frontmatter.OOEvent_PluginVersion}`;
   }
 
   // Legacy method for backward compatibility - now creates a summary note
+  // Helper method to check if file contents are identical
+  private async areFileContentsIdentical(filePath: string, newContent: string): Promise<boolean> {
+    try {
+      const existingFile = this.app.vault.getAbstractFileByPath(filePath);
+      if (!existingFile || !(existingFile instanceof TFile)) {
+        return false; // File doesn't exist, so contents are not identical
+      }
+      
+      const existingContent = await this.app.vault.read(existingFile);
+      return existingContent === newContent;
+    } catch (error) {
+      this.log(`Error comparing file contents for ${filePath}:`, error);
+      return false;
+    }
+  }
+
+  // Helper method to prompt user for file overwrite decision
+  private async promptForFileOverwrite(filePath: string): Promise<'backup' | 'overwrite' | 'cancel'> {
+    return new Promise((resolve) => {
+      const modal = new Modal(this.app);
+      modal.titleEl.setText('File Already Exists');
+      
+      const content = modal.contentEl;
+      content.createDiv().setText(`The file "${filePath}" already exists with different content.`);
+      content.createDiv().setText('What would you like to do?');
+      
+      const buttonContainer = content.createDiv();
+      buttonContainer.style.marginTop = '20px';
+      buttonContainer.style.display = 'flex';
+      buttonContainer.style.gap = '10px';
+      
+      const backupBtn = buttonContainer.createEl('button', { text: 'Backup & Overwrite' });
+      const overwriteBtn = buttonContainer.createEl('button', { text: 'Overwrite' });
+      const cancelBtn = buttonContainer.createEl('button', { text: 'Cancel' });
+      
+      backupBtn.onclick = () => {
+        modal.close();
+        resolve('backup');
+      };
+      
+      overwriteBtn.onclick = () => {
+        modal.close();
+        resolve('overwrite');
+      };
+      
+      cancelBtn.onclick = () => {
+        modal.close();
+        resolve('cancel');
+      };
+      
+      modal.open();
+    });
+  }
+
   async createSummaryNote(): Promise<void> {
     try {
       const summaryPath = `${this.config.eventsFolder}/events/_summary.md`;
@@ -435,17 +489,40 @@ LIMIT 30
 \`\`\`
 `;
 
-      // Check if summary file already exists
+      // Check if summary file already exists and compare contents
       const existingFile = this.app.vault.getAbstractFileByPath(summaryPath);
       
       if (existingFile) {
-        this.log(`[ObsidianObserver] Summary file already exists: ${summaryPath}`);
-        return;
+        const contentsIdentical = await this.areFileContentsIdentical(summaryPath, summaryContent);
+        if (contentsIdentical) {
+          this.log(`[ObsidianObserver] Summary file already exists with identical content: ${summaryPath}`);
+          return;
+        }
+        
+        // Contents are different, prompt user for action
+        const action = await this.promptForFileOverwrite(summaryPath);
+        
+        if (action === 'cancel') {
+          this.log(`[ObsidianObserver] User cancelled file creation: ${summaryPath}`);
+          return;
+        }
+        
+        if (action === 'backup') {
+          // Create backup
+          const backupPath = `${summaryPath}.backup.${Date.now()}`;
+          const existingContent = await this.app.vault.read(existingFile as TFile);
+          await this.app.vault.create(backupPath, existingContent);
+          this.log(`[ObsidianObserver] Created backup: ${backupPath}`);
+        }
+        
+        // Overwrite the file (both 'backup' and 'overwrite' actions)
+        await this.app.vault.modify(existingFile as TFile, summaryContent);
+        this.log(`[ObsidianObserver] Updated summary file: ${summaryPath}`);
+      } else {
+        // Create the summary file
+        await this.app.vault.create(summaryPath, summaryContent);
+        this.log(`[ObsidianObserver] Created summary file: ${summaryPath}`);
       }
-
-      // Create the summary file
-      await this.app.vault.create(summaryPath, summaryContent);
-      this.log(`[ObsidianObserver] Created summary file: ${summaryPath}`);
       
       // Refresh the file explorer to show the new file
       this.app.workspace.trigger('file-explorer:refresh');
@@ -513,17 +590,40 @@ views:
       note.OOEvent_Type: 117
       note.OOEvent_LocalTimestamp: 213`;
 
-      // Check if base file already exists
+      // Check if base file already exists and compare contents
       const existingFile = this.app.vault.getAbstractFileByPath(basePath);
       
       if (existingFile) {
-        this.log(`[ObsidianObserver] EventsBase.base file already exists: ${basePath}`);
-        return;
+        const contentsIdentical = await this.areFileContentsIdentical(basePath, baseContent);
+        if (contentsIdentical) {
+          this.log(`[ObsidianObserver] EventsBase.base file already exists with identical content: ${basePath}`);
+          return;
+        }
+        
+        // Contents are different, prompt user for action
+        const action = await this.promptForFileOverwrite(basePath);
+        
+        if (action === 'cancel') {
+          this.log(`[ObsidianObserver] User cancelled EventsBase.base file creation: ${basePath}`);
+          return;
+        }
+        
+        if (action === 'backup') {
+          // Create backup
+          const backupPath = `${basePath}.backup.${Date.now()}`;
+          const existingContent = await this.app.vault.read(existingFile as TFile);
+          await this.app.vault.create(backupPath, existingContent);
+          this.log(`[ObsidianObserver] Created backup: ${backupPath}`);
+        }
+        
+        // Overwrite the file (both 'backup' and 'overwrite' actions)
+        await this.app.vault.modify(existingFile as TFile, baseContent);
+        this.log(`[ObsidianObserver] Updated EventsBase.base file: ${basePath}`);
+      } else {
+        // Create the base file
+        await this.app.vault.create(basePath, baseContent);
+        this.log(`[ObsidianObserver] Created EventsBase.base file: ${basePath}`);
       }
-
-      // Create the base file
-      await this.app.vault.create(basePath, baseContent);
-      this.log(`[ObsidianObserver] Created EventsBase.base file: ${basePath}`);
       
     } catch (error) {
       console.error(`[ObsidianObserver] Error creating EventsBase.base file:`, error);
@@ -668,17 +768,40 @@ views:
 }
 */`;
 
-      // Check if CSS file already exists
+      // Check if CSS file already exists and compare contents
       const existingFile = this.app.vault.getAbstractFileByPath(cssPath);
       
       if (existingFile) {
-        this.log(`[ObsidianObserver] CSS file already exists: ${cssPath}`);
-        return;
+        const contentsIdentical = await this.areFileContentsIdentical(cssPath, cssContent);
+        if (contentsIdentical) {
+          this.log(`[ObsidianObserver] CSS file already exists with identical content: ${cssPath}`);
+          return;
+        }
+        
+        // Contents are different, prompt user for action
+        const action = await this.promptForFileOverwrite(cssPath);
+        
+        if (action === 'cancel') {
+          this.log(`[ObsidianObserver] User cancelled CSS file creation: ${cssPath}`);
+          return;
+        }
+        
+        if (action === 'backup') {
+          // Create backup
+          const backupPath = `${cssPath}.backup.${Date.now()}`;
+          const existingContent = await this.app.vault.read(existingFile as TFile);
+          await this.app.vault.create(backupPath, existingContent);
+          this.log(`[ObsidianObserver] Created backup: ${backupPath}`);
+        }
+        
+        // Overwrite the file (both 'backup' and 'overwrite' actions)
+        await this.app.vault.modify(existingFile as TFile, cssContent);
+        this.log(`[ObsidianObserver] Updated CSS file: ${cssPath}`);
+      } else {
+        // Create the CSS file
+        await this.app.vault.create(cssPath, cssContent);
+        this.log(`[ObsidianObserver] Created CSS file: ${cssPath}`);
       }
-
-      // Create the CSS file
-      await this.app.vault.create(cssPath, cssContent);
-      this.log(`[ObsidianObserver] Created CSS file: ${cssPath}`);
       
     } catch (error) {
       console.error(`[ObsidianObserver] Error creating CSS file:`, error);
@@ -1030,17 +1153,40 @@ WHERE OOEvent_GUID = "YOUR_GUID_HERE"
 - **OOEvent_NewPath**: New path (for rename events)
 `;
 
-      // Check if summary file already exists
+      // Check if summary file already exists and compare contents
       const existingFile = this.app.vault.getAbstractFileByPath(summaryPath);
       
       if (existingFile) {
-        this.log(`[ObsidianObserver] Main summary file already exists: ${summaryPath}`);
-        return;
+        const contentsIdentical = await this.areFileContentsIdentical(summaryPath, summaryContent);
+        if (contentsIdentical) {
+          this.log(`[ObsidianObserver] Main summary file already exists with identical content: ${summaryPath}`);
+          return;
+        }
+        
+        // Contents are different, prompt user for action
+        const action = await this.promptForFileOverwrite(summaryPath);
+        
+        if (action === 'cancel') {
+          this.log(`[ObsidianObserver] User cancelled main summary file creation: ${summaryPath}`);
+          return;
+        }
+        
+        if (action === 'backup') {
+          // Create backup
+          const backupPath = `${summaryPath}.backup.${Date.now()}`;
+          const existingContent = await this.app.vault.read(existingFile as TFile);
+          await this.app.vault.create(backupPath, existingContent);
+          this.log(`[ObsidianObserver] Created backup: ${backupPath}`);
+        }
+        
+        // Overwrite the file (both 'backup' and 'overwrite' actions)
+        await this.app.vault.modify(existingFile as TFile, summaryContent);
+        this.log(`[ObsidianObserver] Updated main summary file: ${summaryPath}`);
+      } else {
+        // Create the summary file
+        await this.app.vault.create(summaryPath, summaryContent);
+        this.log(`[ObsidianObserver] Created main summary file: ${summaryPath}`);
       }
-
-      // Create the summary file
-      await this.app.vault.create(summaryPath, summaryContent);
-      this.log(`[ObsidianObserver] Created main summary file: ${summaryPath}`);
       
       // Also create the EventsBase.base file
       await this.createEventsBaseFile();
@@ -1056,37 +1202,13 @@ WHERE OOEvent_GUID = "YOUR_GUID_HERE"
     }
   }
 
-  // Refresh the main summary file by deleting and recreating it
+  // Refresh the main summary file by recreating it with safety checks
   async refreshMainSummaryNote(): Promise<void> {
     try {
-      const summaryPath = `${this.config.eventsFolder}/EventsSummary.md`;
-      const basePath = `${this.config.eventsFolder}/EventsBase.base`;
-      const cssPath = `.obsidian/snippets/obsidianObserverEventsTable.css`;
-      
-      // Check if summary file exists and delete it
-      const existingSummaryFile = this.app.vault.getAbstractFileByPath(summaryPath);
-      if (existingSummaryFile) {
-        await this.app.vault.delete(existingSummaryFile);
-        this.log(`[ObsidianObserver] Deleted existing summary file: ${summaryPath}`);
-      }
-
-      // Check if base file exists and delete it
-      const existingBaseFile = this.app.vault.getAbstractFileByPath(basePath);
-      if (existingBaseFile) {
-        await this.app.vault.delete(existingBaseFile);
-        this.log(`[ObsidianObserver] Deleted existing EventsBase.base file: ${basePath}`);
-      }
-
-      // Check if CSS file exists and delete it
-      const existingCSSFile = this.app.vault.getAbstractFileByPath(cssPath);
-      if (existingCSSFile) {
-        await this.app.vault.delete(existingCSSFile);
-        this.log(`[ObsidianObserver] Deleted existing CSS file: ${cssPath}`);
-      }
-
-      // Create new files with fresh content
+      // Use the same safety-checked creation methods instead of force-deleting
+      // This ensures users are prompted before overwriting their changes
       await this.createMainSummaryNote();
-      this.log(`[ObsidianObserver] Refreshed main summary file: ${summaryPath}`);
+      this.log(`[ObsidianObserver] Refreshed main summary file with safety checks`);
       
     } catch (error) {
       console.error(`[ObsidianObserver] Error refreshing main summary file:`, error);

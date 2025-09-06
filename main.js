@@ -69,9 +69,10 @@ __export(exports, {
   DEFAULT_SETTINGS: () => DEFAULT_SETTINGS,
   default: () => ObsidianObserverPlugin
 });
-var import_obsidian2 = __toModule(require("obsidian"));
+var import_obsidian3 = __toModule(require("obsidian"));
 
 // src/logger.ts
+var import_obsidian = __toModule(require("obsidian"));
 var EventLogger = class {
   constructor(app, config, pluginVersion = "unknown") {
     this.logBuffer = [];
@@ -295,6 +296,48 @@ This event was logged at ${new Date(eventLog.timestamp).toLocaleString()}.`;
     }
     return noteContent;
   }
+  async areFileContentsIdentical(filePath, newContent) {
+    try {
+      const existingFile = this.app.vault.getAbstractFileByPath(filePath);
+      if (!existingFile || !(existingFile instanceof import_obsidian.TFile)) {
+        return false;
+      }
+      const existingContent = await this.app.vault.read(existingFile);
+      return existingContent === newContent;
+    } catch (error) {
+      this.log(`Error comparing file contents for ${filePath}:`, error);
+      return false;
+    }
+  }
+  async promptForFileOverwrite(filePath) {
+    return new Promise((resolve) => {
+      const modal = new import_obsidian.Modal(this.app);
+      modal.titleEl.setText("File Already Exists");
+      const content = modal.contentEl;
+      content.createDiv().setText(`The file "${filePath}" already exists with different content.`);
+      content.createDiv().setText("What would you like to do?");
+      const buttonContainer = content.createDiv();
+      buttonContainer.style.marginTop = "20px";
+      buttonContainer.style.display = "flex";
+      buttonContainer.style.gap = "10px";
+      const backupBtn = buttonContainer.createEl("button", { text: "Backup & Overwrite" });
+      const overwriteBtn = buttonContainer.createEl("button", { text: "Overwrite" });
+      const cancelBtn = buttonContainer.createEl("button", { text: "Cancel" });
+      backupBtn.onclick = () => {
+        modal.close();
+        resolve("backup");
+      };
+      overwriteBtn.onclick = () => {
+        modal.close();
+        resolve("overwrite");
+      };
+      cancelBtn.onclick = () => {
+        modal.close();
+        resolve("cancel");
+      };
+      modal.open();
+    });
+  }
   async createSummaryNote() {
     try {
       const summaryPath = `${this.config.eventsFolder}/events/_summary.md`;
@@ -433,11 +476,28 @@ LIMIT 30
 `;
       const existingFile = this.app.vault.getAbstractFileByPath(summaryPath);
       if (existingFile) {
-        this.log(`[ObsidianObserver] Summary file already exists: ${summaryPath}`);
-        return;
+        const contentsIdentical = await this.areFileContentsIdentical(summaryPath, summaryContent);
+        if (contentsIdentical) {
+          this.log(`[ObsidianObserver] Summary file already exists with identical content: ${summaryPath}`);
+          return;
+        }
+        const action = await this.promptForFileOverwrite(summaryPath);
+        if (action === "cancel") {
+          this.log(`[ObsidianObserver] User cancelled file creation: ${summaryPath}`);
+          return;
+        }
+        if (action === "backup") {
+          const backupPath = `${summaryPath}.backup.${Date.now()}`;
+          const existingContent = await this.app.vault.read(existingFile);
+          await this.app.vault.create(backupPath, existingContent);
+          this.log(`[ObsidianObserver] Created backup: ${backupPath}`);
+        }
+        await this.app.vault.modify(existingFile, summaryContent);
+        this.log(`[ObsidianObserver] Updated summary file: ${summaryPath}`);
+      } else {
+        await this.app.vault.create(summaryPath, summaryContent);
+        this.log(`[ObsidianObserver] Created summary file: ${summaryPath}`);
       }
-      await this.app.vault.create(summaryPath, summaryContent);
-      this.log(`[ObsidianObserver] Created summary file: ${summaryPath}`);
       this.app.workspace.trigger("file-explorer:refresh");
     } catch (error) {
       console.error(`[ObsidianObserver] Error creating summary file:`, error);
@@ -500,11 +560,28 @@ views:
       note.OOEvent_LocalTimestamp: 213`;
       const existingFile = this.app.vault.getAbstractFileByPath(basePath);
       if (existingFile) {
-        this.log(`[ObsidianObserver] EventsBase.base file already exists: ${basePath}`);
-        return;
+        const contentsIdentical = await this.areFileContentsIdentical(basePath, baseContent);
+        if (contentsIdentical) {
+          this.log(`[ObsidianObserver] EventsBase.base file already exists with identical content: ${basePath}`);
+          return;
+        }
+        const action = await this.promptForFileOverwrite(basePath);
+        if (action === "cancel") {
+          this.log(`[ObsidianObserver] User cancelled EventsBase.base file creation: ${basePath}`);
+          return;
+        }
+        if (action === "backup") {
+          const backupPath = `${basePath}.backup.${Date.now()}`;
+          const existingContent = await this.app.vault.read(existingFile);
+          await this.app.vault.create(backupPath, existingContent);
+          this.log(`[ObsidianObserver] Created backup: ${backupPath}`);
+        }
+        await this.app.vault.modify(existingFile, baseContent);
+        this.log(`[ObsidianObserver] Updated EventsBase.base file: ${basePath}`);
+      } else {
+        await this.app.vault.create(basePath, baseContent);
+        this.log(`[ObsidianObserver] Created EventsBase.base file: ${basePath}`);
       }
-      await this.app.vault.create(basePath, baseContent);
-      this.log(`[ObsidianObserver] Created EventsBase.base file: ${basePath}`);
     } catch (error) {
       console.error(`[ObsidianObserver] Error creating EventsBase.base file:`, error);
     }
@@ -646,11 +723,28 @@ views:
 */`;
       const existingFile = this.app.vault.getAbstractFileByPath(cssPath);
       if (existingFile) {
-        this.log(`[ObsidianObserver] CSS file already exists: ${cssPath}`);
-        return;
+        const contentsIdentical = await this.areFileContentsIdentical(cssPath, cssContent);
+        if (contentsIdentical) {
+          this.log(`[ObsidianObserver] CSS file already exists with identical content: ${cssPath}`);
+          return;
+        }
+        const action = await this.promptForFileOverwrite(cssPath);
+        if (action === "cancel") {
+          this.log(`[ObsidianObserver] User cancelled CSS file creation: ${cssPath}`);
+          return;
+        }
+        if (action === "backup") {
+          const backupPath = `${cssPath}.backup.${Date.now()}`;
+          const existingContent = await this.app.vault.read(existingFile);
+          await this.app.vault.create(backupPath, existingContent);
+          this.log(`[ObsidianObserver] Created backup: ${backupPath}`);
+        }
+        await this.app.vault.modify(existingFile, cssContent);
+        this.log(`[ObsidianObserver] Updated CSS file: ${cssPath}`);
+      } else {
+        await this.app.vault.create(cssPath, cssContent);
+        this.log(`[ObsidianObserver] Created CSS file: ${cssPath}`);
       }
-      await this.app.vault.create(cssPath, cssContent);
-      this.log(`[ObsidianObserver] Created CSS file: ${cssPath}`);
     } catch (error) {
       console.error(`[ObsidianObserver] Error creating CSS file:`, error);
     }
@@ -999,11 +1093,28 @@ WHERE OOEvent_GUID = "YOUR_GUID_HERE"
 `;
       const existingFile = this.app.vault.getAbstractFileByPath(summaryPath);
       if (existingFile) {
-        this.log(`[ObsidianObserver] Main summary file already exists: ${summaryPath}`);
-        return;
+        const contentsIdentical = await this.areFileContentsIdentical(summaryPath, summaryContent);
+        if (contentsIdentical) {
+          this.log(`[ObsidianObserver] Main summary file already exists with identical content: ${summaryPath}`);
+          return;
+        }
+        const action = await this.promptForFileOverwrite(summaryPath);
+        if (action === "cancel") {
+          this.log(`[ObsidianObserver] User cancelled main summary file creation: ${summaryPath}`);
+          return;
+        }
+        if (action === "backup") {
+          const backupPath = `${summaryPath}.backup.${Date.now()}`;
+          const existingContent = await this.app.vault.read(existingFile);
+          await this.app.vault.create(backupPath, existingContent);
+          this.log(`[ObsidianObserver] Created backup: ${backupPath}`);
+        }
+        await this.app.vault.modify(existingFile, summaryContent);
+        this.log(`[ObsidianObserver] Updated main summary file: ${summaryPath}`);
+      } else {
+        await this.app.vault.create(summaryPath, summaryContent);
+        this.log(`[ObsidianObserver] Created main summary file: ${summaryPath}`);
       }
-      await this.app.vault.create(summaryPath, summaryContent);
-      this.log(`[ObsidianObserver] Created main summary file: ${summaryPath}`);
       await this.createEventsBaseFile();
       await this.createCSSFile();
       this.app.workspace.trigger("file-explorer:refresh");
@@ -1013,26 +1124,8 @@ WHERE OOEvent_GUID = "YOUR_GUID_HERE"
   }
   async refreshMainSummaryNote() {
     try {
-      const summaryPath = `${this.config.eventsFolder}/EventsSummary.md`;
-      const basePath = `${this.config.eventsFolder}/EventsBase.base`;
-      const cssPath = `.obsidian/snippets/obsidianObserverEventsTable.css`;
-      const existingSummaryFile = this.app.vault.getAbstractFileByPath(summaryPath);
-      if (existingSummaryFile) {
-        await this.app.vault.delete(existingSummaryFile);
-        this.log(`[ObsidianObserver] Deleted existing summary file: ${summaryPath}`);
-      }
-      const existingBaseFile = this.app.vault.getAbstractFileByPath(basePath);
-      if (existingBaseFile) {
-        await this.app.vault.delete(existingBaseFile);
-        this.log(`[ObsidianObserver] Deleted existing EventsBase.base file: ${basePath}`);
-      }
-      const existingCSSFile = this.app.vault.getAbstractFileByPath(cssPath);
-      if (existingCSSFile) {
-        await this.app.vault.delete(existingCSSFile);
-        this.log(`[ObsidianObserver] Deleted existing CSS file: ${cssPath}`);
-      }
       await this.createMainSummaryNote();
-      this.log(`[ObsidianObserver] Refreshed main summary file: ${summaryPath}`);
+      this.log(`[ObsidianObserver] Refreshed main summary file with safety checks`);
     } catch (error) {
       console.error(`[ObsidianObserver] Error refreshing main summary file:`, error);
       throw error;
@@ -1041,7 +1134,7 @@ WHERE OOEvent_GUID = "YOUR_GUID_HERE"
 };
 
 // src/eventHandlers.ts
-var import_obsidian = __toModule(require("obsidian"));
+var import_obsidian2 = __toModule(require("obsidian"));
 init_utils();
 var EventHandlers = class {
   constructor(app, logger) {
@@ -1150,19 +1243,19 @@ var EventHandlers = class {
       });
       this.eventRefs.push(openRef);
       const saveRef = this.app.vault.on("modify", (file) => {
-        if (file instanceof import_obsidian.TFile) {
+        if (file instanceof import_obsidian2.TFile) {
           this.handleFileSave(file);
         }
       });
       this.eventRefs.push(saveRef);
       const renameRef = this.app.vault.on("rename", (file, oldPath) => {
-        if (file instanceof import_obsidian.TFile) {
+        if (file instanceof import_obsidian2.TFile) {
           this.handleFileRename(file, oldPath);
         }
       });
       this.eventRefs.push(renameRef);
       const deleteRef = this.app.vault.on("delete", (file) => {
-        if (file instanceof import_obsidian.TFile) {
+        if (file instanceof import_obsidian2.TFile) {
           this.handleFileDelete(file);
         }
       });
@@ -1393,7 +1486,7 @@ var DEFAULT_SETTINGS = {
   eventsFolder: "ObsidianObserver",
   enableConsoleLog: true
 };
-var ObsidianObserverPlugin = class extends import_obsidian2.Plugin {
+var ObsidianObserverPlugin = class extends import_obsidian3.Plugin {
   constructor(app, manifest) {
     super(app, manifest);
     this.settings = { ...DEFAULT_SETTINGS };
@@ -1425,25 +1518,23 @@ var ObsidianObserverPlugin = class extends import_obsidian2.Plugin {
         callback: async () => {
           await this.logger.flushBuffer();
           this.app.workspace.trigger("file-explorer:refresh");
-          new import_obsidian2.Notice("Buffer flushed to event notes!");
+          new import_obsidian3.Notice("Buffer flushed to event notes!");
         }
       });
       this.addCommand({
         id: "obsidian-observer-refresh-summary",
-        name: "ObsidianObserver: Refresh Summary",
+        name: "Rebuild Files",
         callback: async () => {
           await this.logger.refreshMainSummaryNote();
           this.app.workspace.trigger("file-explorer:refresh");
-          new import_obsidian2.Notice("Events summary refreshed!");
+          new import_obsidian3.Notice("Files rebuilt successfully!");
         }
       });
       this.addCommand({
-        id: "obsidian-observer-debug-hostname",
-        name: "ObsidianObserver: Debug Hostname",
-        callback: () => {
-          const hostname = this.getHostname();
-          this.log("[ObsidianObserver] Debug - Final hostname result:", hostname);
-          new import_obsidian2.Notice(`Hostname: ${hostname}`);
+        id: "obsidian-observer-debug",
+        name: "Debug",
+        callback: async () => {
+          await this.dumpDebugInfo();
         }
       });
       const { generateBase32Guid: generateBase32Guid2 } = await Promise.resolve().then(() => (init_utils(), utils_exports));
@@ -1477,14 +1568,132 @@ var ObsidianObserverPlugin = class extends import_obsidian2.Plugin {
     await this.saveSettings();
     await this.updateLoggerConfiguration();
   }
-  async isCSSEnabled() {
+  async dumpDebugInfo() {
+    var _a, _b;
+    const eventsDir = this.settings.eventsFolder;
+    const eventsPath = `${eventsDir}/events`;
+    const summaryPath = `${eventsDir}/EventsSummary.md`;
+    const basePath = `${eventsDir}/EventsBase.base`;
+    const cssStatus = await this.getCSSStatus();
+    const hostname = this.getHostname();
+    const eventsDirFile = this.app.vault.getAbstractFileByPath(eventsDir);
+    const eventsDirFile2 = this.app.vault.getAbstractFileByPath(eventsPath);
+    const summaryFile = this.app.vault.getAbstractFileByPath(summaryPath);
+    const baseFile = this.app.vault.getAbstractFileByPath(basePath);
+    const vaultFiles = this.app.vault.getFiles().slice(0, 10);
+    const debugInfo = {
+      plugin: {
+        version: this.manifest.version,
+        settings: this.settings
+      },
+      vault: {
+        name: this.app.vault.getName(),
+        path: this.app.vault.adapter.basePath || "Unknown",
+        totalFiles: this.app.vault.getFiles().length,
+        sampleFiles: vaultFiles.map((file) => ({ path: file.path, type: file.constructor.name }))
+      },
+      css: cssStatus,
+      events: {
+        folder: {
+          setting: eventsDir,
+          exists: eventsDirFile ? "YES" : "NO",
+          type: eventsDirFile ? eventsDirFile.constructor.name : null
+        },
+        directory: {
+          path: eventsPath,
+          exists: eventsDirFile2 ? "YES" : "NO"
+        }
+      },
+      summary: {
+        file: {
+          path: summaryPath,
+          exists: summaryFile ? "YES" : "NO"
+        },
+        base: {
+          path: basePath,
+          exists: baseFile ? "YES" : "NO"
+        }
+      },
+      logger: {
+        initialized: this.logger ? "YES" : "NO",
+        config: this.logger ? {
+          eventsFolder: (_a = this.logger["config"]) == null ? void 0 : _a.eventsFolder,
+          enableConsoleLog: (_b = this.logger["config"]) == null ? void 0 : _b.enableConsoleLog
+        } : null
+      },
+      eventHandlers: {
+        initialized: this.eventHandlers ? "YES" : "NO"
+      },
+      hostname,
+      timestamp: new Date().toISOString()
+    };
+    console.log("ObsidianObserver Debug:", JSON.stringify(debugInfo, null, 0));
+    new import_obsidian3.Notice("Debug information dumped to console!");
+  }
+  async getCSSStatus() {
     try {
-      const cssPath = `.obsidian/snippets/obsidianObserverEventsTable.css`;
-      const cssFile = this.app.vault.getAbstractFileByPath(cssPath);
-      return cssFile !== null;
+      const configDir = this.app.vault.configDir;
+      const cssPath = `${configDir}/snippets/obsidianObserverEventsTable.css`;
+      const appearancePath = `${configDir}/appearance.json`;
+      this.log("[ObsidianObserver] CSS Detection Debug:");
+      this.log("  - Config Dir:", configDir);
+      this.log("  - CSS Path:", cssPath);
+      this.log("  - Appearance Path:", appearancePath);
+      const adapter = this.app.vault.adapter;
+      const cssExists = await adapter.exists(cssPath);
+      this.log("  - CSS File exists:", cssExists ? "YES" : "NO");
+      if (!cssExists) {
+        return {
+          exists: false,
+          enabled: false,
+          message: "CSS file not found in .obsidian/snippets/"
+        };
+      }
+      const appearanceExists = await adapter.exists(appearancePath);
+      this.log("  - Appearance File exists:", appearanceExists ? "YES" : "NO");
+      if (appearanceExists) {
+        try {
+          const appearanceContent = await adapter.read(appearancePath);
+          const appearance = JSON.parse(appearanceContent);
+          const enabledSnippets = (appearance == null ? void 0 : appearance.enabledCssSnippets) || [];
+          const isEnabled = enabledSnippets.includes("obsidianObserverEventsTable");
+          this.log("  - Enabled snippets:", enabledSnippets);
+          this.log("  - CSS snippet enabled:", isEnabled);
+          if (isEnabled) {
+            return {
+              exists: true,
+              enabled: true,
+              message: "CSS snippet is present and enabled"
+            };
+          } else {
+            return {
+              exists: true,
+              enabled: false,
+              message: "CSS file exists but snippet is not enabled in Appearance settings"
+            };
+          }
+        } catch (appearanceError) {
+          this.log("[ObsidianObserver] Error reading appearance.json:", appearanceError);
+          return {
+            exists: true,
+            enabled: false,
+            message: "CSS file exists but cannot verify if snippet is enabled"
+          };
+        }
+      } else {
+        return {
+          exists: true,
+          enabled: false,
+          message: "CSS file exists but cannot verify if snippet is enabled"
+        };
+      }
     } catch (error) {
       this.log("[ObsidianObserver] Error checking CSS file:", error);
-      return false;
+      return {
+        exists: false,
+        enabled: false,
+        message: "Error checking CSS file status"
+      };
     }
   }
   async updateLoggerConfiguration() {
@@ -1632,7 +1841,7 @@ var ObsidianObserverPlugin = class extends import_obsidian2.Plugin {
     }
   }
 };
-var ObsidianObserverSettingTab = class extends import_obsidian2.PluginSettingTab {
+var ObsidianObserverSettingTab = class extends import_obsidian3.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
@@ -1641,15 +1850,15 @@ var ObsidianObserverSettingTab = class extends import_obsidian2.PluginSettingTab
     const { containerEl } = this;
     containerEl.empty();
     containerEl.createEl("h2", { text: "ObsidianObserver Settings" });
-    new import_obsidian2.Setting(containerEl).setName("Plugin Version").setDesc(`Current version: ${this.plugin.manifest.version}`).addText((text) => text.setValue(this.plugin.manifest.version).setDisabled(true));
+    new import_obsidian3.Setting(containerEl).setName("Plugin Version").setDesc(`Current version: ${this.plugin.manifest.version}`).addText((text) => text.setValue(this.plugin.manifest.version).setDisabled(true));
     this.checkAndDisplayCSSWarning(containerEl);
-    new import_obsidian2.Setting(containerEl).setName("Events Folder").setDesc("The base folder where ObsidianObserver will create its structure. Events will be stored in EventsFolder/events and EventSummary.md will be created automatically.").addText((text) => text.setPlaceholder("ObsidianObserver").setValue(this.plugin.settings.eventsFolder).onChange(async (value) => {
+    new import_obsidian3.Setting(containerEl).setName("Events Folder").setDesc("The base folder where ObsidianObserver will create its structure. Events will be stored in EventsFolder/events and EventSummary.md will be created automatically.").addText((text) => text.setPlaceholder("ObsidianObserver").setValue(this.plugin.settings.eventsFolder).onChange(async (value) => {
       await this.plugin.updateSettings({ eventsFolder: value });
     }));
-    new import_obsidian2.Setting(containerEl).setName("Enable Console Logging").setDesc("Log events to the browser console for debugging.").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableConsoleLog).onChange(async (value) => {
+    new import_obsidian3.Setting(containerEl).setName("Enable Console Logging").setDesc("Log events to the browser console for debugging.").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableConsoleLog).onChange(async (value) => {
       await this.plugin.updateSettings({ enableConsoleLog: value });
     }));
-    new import_obsidian2.Setting(containerEl).setName("Reset to Defaults").setDesc("Reset all settings to their default values.").addButton((button) => button.setButtonText("Reset").setWarning().onClick(async () => {
+    new import_obsidian3.Setting(containerEl).setName("Reset to Defaults").setDesc("Reset all settings to their default values.").addButton((button) => button.setButtonText("Reset").setWarning().onClick(async () => {
       this.plugin.settings = { ...DEFAULT_SETTINGS };
       await this.plugin.saveSettings();
       this.display();
@@ -1657,17 +1866,27 @@ var ObsidianObserverSettingTab = class extends import_obsidian2.PluginSettingTab
   }
   async checkAndDisplayCSSWarning(containerEl) {
     try {
-      const cssEnabled = await this.plugin.isCSSEnabled();
-      if (!cssEnabled) {
+      const cssStatus = await this.plugin.getCSSStatus();
+      if (!cssStatus.exists || !cssStatus.enabled) {
         const warningEl = containerEl.createDiv("setting-item");
         const infoEl = warningEl.createDiv("setting-item-info");
-        infoEl.createDiv("setting-item-name").setText("\u26A0\uFE0F CSS Styling Warning");
-        warningEl.createDiv("setting-item-description").setText("The table CSS file (obsidianObserverEventsTable.css) is not found in .obsidian/snippets/. Event tables may not display properly. Please ensure the CSS snippet is enabled in Appearance settings.");
+        let warningTitle = "\u26A0\uFE0F CSS Styling Warning";
+        let warningMessage = "";
+        if (!cssStatus.exists) {
+          warningMessage = 'The CSS file (obsidianObserverEventsTable.css) is not found in .obsidian/snippets/. Event tables may not display properly. Run the "Rebuild Files" command to recreate the CSS file, then enable it in Appearance \u2192 CSS snippets.';
+        } else if (!cssStatus.enabled) {
+          warningMessage = 'The CSS file exists but the snippet is not enabled. Please go to Appearance \u2192 CSS snippets and enable "obsidianObserverEventsTable.css" for proper table styling.';
+        }
+        infoEl.createDiv("setting-item-name").setText(warningTitle);
+        warningEl.createDiv("setting-item-description").setText(warningMessage);
         warningEl.style.color = "var(--text-warning)";
         warningEl.style.border = "1px solid var(--text-warning)";
         warningEl.style.padding = "10px";
         warningEl.style.borderRadius = "4px";
         warningEl.style.marginBottom = "10px";
+        if (this.plugin.settings.enableConsoleLog) {
+          console.log("[ObsidianObserver] CSS Status:", cssStatus);
+        }
       }
     } catch (error) {
       console.error("[ObsidianObserver] Error checking CSS:", error);
